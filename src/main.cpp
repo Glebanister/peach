@@ -142,20 +142,18 @@ public:
     {
     }
 
-    // Returns new Token pointer, if terminal node is reached, nullptr otherwise
-    std::unique_ptr<Token> followChar(char c)
+    std::vector<std::unique_ptr<Token>> tokenizeText(const std::string &text)
     {
-        curNode_ = curNode_->getNextNode(c);
-        std::unique_ptr<Token> result;
-        curTokenString_ += c;
-        ++curTokenPos_;
-        if (curNode_->isTerminal())
+        std::vector<std::unique_ptr<Token>> tokens;
+        for (char c : text)
         {
-            result = std::make_unique<Token>(curNode_->getTokenCategory(), std::move(curTokenString_), curTokenPos_);
-            curTokenString_.clear();
-            curNode_ = root_;
+            auto newToken = followChar(c);
+            if (newToken)
+            {
+                tokens.emplace_back(std::move(newToken));
+            }
         }
-        return result;
+        return tokens;
     }
 
     std::shared_ptr<Node> getRoot() const
@@ -164,10 +162,38 @@ public:
     }
 
 private:
+    // Returns new Token pointer, if terminal node is reached, nullptr otherwise
+    std::unique_ptr<Token> followChar(char c)
+    {
+        curNode_ = curNode_->getNextNode(c);
+        std::unique_ptr<Token> result;
+        curTokenString_ += c;
+        ++curTokenPos_;
+        if (curNode_ && curNode_->isTerminal())
+        {
+            auto tokenLen = curTokenString_.length();
+            result = std::make_unique<Token>(curNode_->getTokenCategory(),
+                                             std::move(curTokenString_),
+                                             curTokenPos_ - tokenLen);
+            resetToken();
+        }
+        else if (!curNode_)
+        {
+            resetToken();
+        }
+        return result;
+    }
+
+    void resetToken()
+    {
+        curNode_ = root_;
+        curTokenString_.clear();
+    }
+
     std::shared_ptr<Node> root_;
     std::shared_ptr<Node> curNode_;
     std::string curTokenString_ = "";
-    int curTokenPos_ = -1;
+    int curTokenPos_ = 0;
 };
 
 int main()
@@ -177,9 +203,12 @@ int main()
     auto two = one->addTransitionToNewNode<SingleCharTransition<'e'>>(tokenCategory::ONE);
     auto three = one->addTransitionToNewNode<SingleCharTransition<'i'>>(tokenCategory::TWO);
 
-    machine.followChar('h');
-    auto newToken = machine.followChar('e');
-    std::cout << newToken->getCategory() << ' ' << newToken->getPosition() << ' ' << newToken->getToken() << std::endl;
+    auto result = machine.tokenizeText("heshrhehi");
+    std::cout << result.size() << std::endl;
+    for (auto &token : result)
+    {
+        std::cout << token->getPosition() << ' ' << token->getToken() << std::endl;
+    }
 }
 
 /*
