@@ -1,6 +1,17 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(peach)
-include_directories(include)
-set(SOURCES src/main.cpp)
-add_executable(${CMAKE_PROJECT_NAME} ${SOURCES})
-set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY CXX_STANDARD 17)
+
+add_compile_options(-Wall -Wextra -pedantic -Werror)
+
+set(EXE
+    peach    
+)
+
+set(SOURCES
+    src/main.cpp
+)
+
+add_executable(${EXE} ${SOURCES})
+target_include_directories(${EXE} PUBLIC include)
+set_property(TARGET ${EXE}
+             PROPERTY CXX_STANDARD 17)
