@@ -16,34 +16,55 @@ public:
     virtual ~CharTransition() = default;
 };
 
-template <char Begin, char End>
 class RangeCharTransition : public CharTransition
 {
 public:
+    RangeCharTransition(char begin, char end)
+        : begin_(begin), end_(end) {}
+
     bool isActive(char c) override
     {
-        return Begin <= c && c <= End;
+        return begin_ <= c && c <= end_;
     }
+
+private:
+    char begin_;
+    char end_;
 };
 
-template <char Char>
-using SingleCharTransition = RangeCharTransition<Char, Char>;
+class SingleCharTransition : public RangeCharTransition
+{
+public:
+    SingleCharTransition(char c)
+        : RangeCharTransition(c, c) {}
+};
 
-template <char... Chars>
 class SetCharTransition : public CharTransition
 {
 public:
+    SetCharTransition(std::initializer_list<char> charset)
+        : charset_(std::move(charset)) {}
+
     bool isActive(char c) override
     {
-        bool result = false;
-        ((result |= Chars == c), ...);
-        return result;
+        return std::find(charset_.begin(), charset_.end(), c) < charset_.end();
     }
+
+private:
+    std::vector<char> charset_;
 };
 
-using DigitCharTransition = RangeCharTransition<'0', '9'>;
-using LowerLatinCharTransition = RangeCharTransition<'a', 'z'>;
-using UpperLatinCharTransition = RangeCharTransition<'A', 'Z'>;
+template <char Begin, char End>
+class RangeCharTransitionTemplate : public RangeCharTransition
+{
+public:
+    RangeCharTransitionTemplate()
+        : RangeCharTransition(Begin, End) {}
+};
+
+using DigitCharTransition = RangeCharTransitionTemplate<'0', '9'>;
+using LowerLatinCharTransition = RangeCharTransitionTemplate<'a', 'z'>;
+using UpperLatinCharTransition = RangeCharTransitionTemplate<'A', 'Z'>;
 
 enum tokenCategory
 {
@@ -177,7 +198,7 @@ private:
                                              curTokenPos_ - tokenLen);
             resetToken();
         }
-        else if (!curNode_)
+        else if (!curNode_) // TODO: may be not correct
         {
             resetToken();
         }
@@ -194,6 +215,23 @@ private:
     std::shared_ptr<Node> curNode_;
     std::string curTokenString_ = "";
     int curTokenPos_ = 0;
+};
+
+class PrefixTree : public FiniteStateMachine
+{
+public:
+    void addKeyword(const std::string &word)
+    {
+        auto curNode = getRoot();
+        for (char c : word)
+        {
+            auto nextNode = curNode->getNextNode(c);
+            if (!nextNode)
+            {
+                curNode->addTransitionToNewNode<SingleCharTransition<c>>()
+            }
+        }
+    }
 };
 
 int main()
@@ -213,18 +251,16 @@ int main()
 
 /*
 
-func foo(a, b, c):
-    let res = 4
-    let i = 0
-    while (res != 0):
-        i = i + 1
-        res = res - 1
-        if i % 2 == 0:
-            res = res + a + b + i
-        elif i % 2 == 1:
-            res = 0
-        else:
-            res = res + c - i
-    res = res + c
-    return res
+res = 4
+i = 0
+while (res != 0)
+    i = i + 1
+    res = res - 1
+    if i % 2 == 0:
+        res = res + a + b + i
+    elif i % 2 == 1:
+        res = 0
+    else:
+        res = res + c - i
+res += c
 */
