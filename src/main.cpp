@@ -41,14 +41,36 @@ public:
     }
 };
 
+using DigitCharTransition = RangeCharTransition<'0', '9'>;
+using LowerLatinCharTransition = RangeCharTransition<'a', 'z'>;
+using UpperLatinCharTransition = RangeCharTransition<'A', 'Z'>;
+
+enum tokenCategory
+{
+    UNDEFINED,
+    ONE,
+    TWO,
+};
+
 class Node
 {
 public:
-    template <typename Transition, typename... TransitionArgs>
-    void addTransition(std::shared_ptr<Node> nextNode, TransitionArgs &&... args)
+    Node(tokenCategory category = UNDEFINED)
+        : category_(category) {}
+
+    template <typename Transition>
+    void addTransition(std::shared_ptr<Node> nextNode)
     {
-        auto newTransition = std::make_unique<Transition>(std::forward(args)...);
+        auto newTransition = std::make_unique<Transition>();
         transitions_.emplace_back(std::move(newTransition), std::move(nextNode));
+    }
+
+    template <typename Transition, typename... NodeArgs>
+    std::shared_ptr<Node> addTransitionToNewNode(NodeArgs &&... args)
+    {
+        auto newNode = std::make_shared<Node>(std::forward<NodeArgs>(args)...);
+        addTransition<Transition>(newNode);
+        return newNode;
     }
 
     std::shared_ptr<Node> getNextNode(char c)
@@ -63,22 +85,101 @@ public:
         return nullptr;
     }
 
+    bool isTerminal() const noexcept
+    {
+        return category_ != UNDEFINED;
+    }
+
+    tokenCategory getTokenCategory() const noexcept
+    {
+        return category_;
+    }
+
 private:
     std::vector<std::pair<std::unique_ptr<CharTransition>, std::shared_ptr<Node>>> transitions_;
+    tokenCategory category_;
 };
 
-template <typename... Args>
-inline std::shared_ptr<Node> makeNode(Args &&... args)
+class Token
 {
-    return std::make_shared<Node>(std::forward(args)...);
-}
+public:
+    Token(tokenCategory category,
+          std::string token,
+          int position)
+        : category_(std::move(category)),
+          token_(std::move(token)),
+          position_(std::move(position))
+    {
+    }
+
+    tokenCategory getCategory() const noexcept
+    {
+        return category_;
+    }
+
+    std::string getToken() const noexcept
+    {
+        return token_;
+    }
+
+    int getPosition() const noexcept
+    {
+        return position_;
+    }
+
+private:
+    tokenCategory category_;
+    std::string token_;
+    int position_;
+};
+
+class FiniteStateMachine
+{
+public:
+    FiniteStateMachine()
+        : root_(std::make_shared<Node>()),
+          curNode_(root_)
+    {
+    }
+
+    // Returns new Token pointer, if terminal node is reached, nullptr otherwise
+    std::unique_ptr<Token> followChar(char c)
+    {
+        curNode_ = curNode_->getNextNode(c);
+        std::unique_ptr<Token> result;
+        curTokenString_ += c;
+        ++curTokenPos_;
+        if (curNode_->isTerminal())
+        {
+            result = std::make_unique<Token>(curNode_->getTokenCategory(), std::move(curTokenString_), curTokenPos_);
+            curTokenString_.clear();
+            curNode_ = root_;
+        }
+        return result;
+    }
+
+    std::shared_ptr<Node> getRoot() const
+    {
+        return root_;
+    }
+
+private:
+    std::shared_ptr<Node> root_;
+    std::shared_ptr<Node> curNode_;
+    std::string curTokenString_ = "";
+    int curTokenPos_ = -1;
+};
 
 int main()
 {
-    auto node1 = makeNode();
-    auto node2 = makeNode();
-    node1->addTransition<SetCharTransition<'a'>>(node2);
-    std::cout << node1->getNextNode('b') << std::endl;
+    auto machine = FiniteStateMachine();
+    auto one = machine.getRoot()->addTransitionToNewNode<SingleCharTransition<'h'>>();
+    auto two = one->addTransitionToNewNode<SingleCharTransition<'e'>>(tokenCategory::ONE);
+    auto three = one->addTransitionToNewNode<SingleCharTransition<'i'>>(tokenCategory::TWO);
+
+    machine.followChar('h');
+    auto newToken = machine.followChar('e');
+    std::cout << newToken->getCategory() << ' ' << newToken->getPosition() << ' ' << newToken->getToken() << std::endl;
 }
 
 /*
