@@ -20,7 +20,10 @@ class RangeCharTransition : public CharTransition
 {
 public:
     RangeCharTransition(char begin, char end)
-        : begin_(begin), end_(end) {}
+        : begin_(begin),
+          end_(end)
+    {
+    }
 
     bool isActive(char c) override
     {
@@ -66,31 +69,66 @@ using DigitCharTransition = RangeCharTransitionTemplate<'0', '9'>;
 using LowerLatinCharTransition = RangeCharTransitionTemplate<'a', 'z'>;
 using UpperLatinCharTransition = RangeCharTransitionTemplate<'A', 'Z'>;
 
+class LatinUnderscoreTransition : public CharTransition
+{
+public:
+    bool isActive(char c) override
+    {
+        return (('a' <= c && c <= 'z') ||
+                ('A' <= c && c <= 'Z') ||
+                c == '_');
+    }
+};
+
+class LatinUnderscoreDigitTransition : public LatinUnderscoreTransition
+{
+public:
+    using LatinUnderscoreTransition::LatinUnderscoreTransition;
+
+    bool isActive(char c) override
+    {
+        return LatinUnderscoreTransition::isActive(c) || ('0' <= c && c <= '9');
+    }
+};
+
+template <class Transition> // TODO: put SFINAE here, requires 'bool Transition::isActive()'
+class TransitionNegation : public Transition
+{
+public:
+    bool isActive(char c) override
+    {
+        return !Transition::isActive(c);
+    }
+};
+
 enum tokenCategory
 {
     UNDEFINED,
     ONE,
     TWO,
+    NAME,
 };
 
 class Node
 {
 public:
     Node(tokenCategory category = UNDEFINED)
-        : category_(category) {}
-
-    template <typename Transition>
-    void addTransition(std::shared_ptr<Node> nextNode)
+        : category_(category)
     {
-        auto newTransition = std::make_unique<Transition>();
+    }
+
+    template <typename Transition, typename... TransitionArgs>
+    void addTransition(std::shared_ptr<Node> nextNode, TransitionArgs &&... args)
+    {
+        auto newTransition = std::make_unique<Transition>(std::forward<TransitionArgs>(args)...);
         transitions_.emplace_back(std::move(newTransition), std::move(nextNode));
     }
 
-    template <typename Transition, typename... NodeArgs>
-    std::shared_ptr<Node> addTransitionToNewNode(NodeArgs &&... args)
+    template <typename Transition, typename... TransitionArgs>
+    std::shared_ptr<Node> addTransitionToNewNode(tokenCategory category, TransitionArgs &&... args)
     {
-        auto newNode = std::make_shared<Node>(std::forward<NodeArgs>(args)...);
-        addTransition<Transition>(newNode);
+        auto newNode = std::make_shared<Node>(category);
+        addTransition<Transition>(newNode, std::forward<TransitionArgs>(args)...);
         return newNode;
     }
 
@@ -166,14 +204,15 @@ public:
     std::vector<std::unique_ptr<Token>> tokenizeText(const std::string &text)
     {
         std::vector<std::unique_ptr<Token>> tokens;
-        for (char c : text)
-        {
+        auto processChar = [&](char c) {
             auto newToken = followChar(c);
             if (newToken)
             {
                 tokens.emplace_back(std::move(newToken));
             }
-        }
+        };
+        std::for_each(text.begin(), text.end(), processChar);
+        processChar('\0');
         return tokens;
     }
 
@@ -184,31 +223,39 @@ public:
 
 private:
     // Returns new Token pointer, if terminal node is reached, nullptr otherwise
+    // Does NOT includes char, that followed to the terminal
+    // TODO: is it correct?
+    // Token resets on root
     std::unique_ptr<Token> followChar(char c)
     {
-        curNode_ = curNode_->getNextNode(c);
+        auto nextNode_ = curNode_->getNextNode(c);
         std::unique_ptr<Token> result;
-        curTokenString_ += c;
-        ++curTokenPos_;
-        if (curNode_ && curNode_->isTerminal())
+        if (nextNode_ && nextNode_->isTerminal())
         {
             auto tokenLen = curTokenString_.length();
             result = std::make_unique<Token>(curNode_->getTokenCategory(),
                                              std::move(curTokenString_),
                                              curTokenPos_ - tokenLen);
-            resetToken();
+            curNode_ = root_;
+            curTokenString_.clear();
+            followChar(c); // TODO: infinite recursion check
         }
-        else if (!curNode_) // TODO: may be not correct
+        else if (!nextNode_)
         {
-            resetToken();
+            // TODO: maybe this action may be customized ???
+            throw std::invalid_argument("can not follow char on position " + std::to_string(curTokenPos_));
+        }
+        else
+        {
+            ++curTokenPos_;
+            curTokenString_ += c;
+            curNode_ = nextNode_;
+            if (curNode_ == root_)
+            {
+                curTokenString_.clear();
+            }
         }
         return result;
-    }
-
-    void resetToken()
-    {
-        curNode_ = root_;
-        curTokenString_.clear();
     }
 
     std::shared_ptr<Node> root_;
@@ -217,35 +264,25 @@ private:
     int curTokenPos_ = 0;
 };
 
-class PrefixTree : public FiniteStateMachine
+// Name here - pattern that starts with latin letter or underscore, contains latin letters, underscores and digits
+class NameFinder : public FiniteStateMachine
 {
 public:
-    void addKeyword(const std::string &word)
+    NameFinder()
     {
-        auto curNode = getRoot();
-        for (char c : word)
-        {
-            auto nextNode = curNode->getNextNode(c);
-            if (!nextNode)
-            {
-                curNode->addTransitionToNewNode<SingleCharTransition<c>>()
-            }
-        }
+        auto firstNode = getRoot()->addTransitionToNewNode<LatinUnderscoreTransition>(tokenCategory::UNDEFINED);
+        firstNode->addTransition<LatinUnderscoreDigitTransition>(firstNode);
+        firstNode->addTransitionToNewNode<TransitionNegation<LatinUnderscoreDigitTransition>>(tokenCategory::NAME);
+        getRoot()->addTransition<TransitionNegation<LatinUnderscoreTransition>>(getRoot());
     }
 };
 
 int main()
 {
-    auto machine = FiniteStateMachine();
-    auto one = machine.getRoot()->addTransitionToNewNode<SingleCharTransition<'h'>>();
-    auto two = one->addTransitionToNewNode<SingleCharTransition<'e'>>(tokenCategory::ONE);
-    auto three = one->addTransitionToNewNode<SingleCharTransition<'i'>>(tokenCategory::TWO);
-
-    auto result = machine.tokenizeText("heshrhehi");
-    std::cout << result.size() << std::endl;
-    for (auto &token : result)
+    auto finder = NameFinder();
+    for (const auto &token : finder.tokenizeText("This_is_name !1this1is_name_too___    "))
     {
-        std::cout << token->getPosition() << ' ' << token->getToken() << std::endl;
+        std::cout << token->getPosition() << " '" << token->getToken() << "'" << std::endl;
     }
 }
 

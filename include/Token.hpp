@@ -23,7 +23,7 @@ enum class tokenCategory
         - underscores
     Examples:
         - 'VariableName1'
-        - 'variable_name_2'
+        - 'variable_name_2' 
     */
     NAME,
 
@@ -73,10 +73,11 @@ enum class tokenCategory
     */
     COND_ELSE,
 
-    /*
-    Token is 'for' loop
-    */
-    LOOP_FOR,
+    // TODO
+    // /*
+    // Token is 'for' loop
+    // */
+    // LOOP_FOR,
 
     /*
     Token is 'while' loop
@@ -106,7 +107,19 @@ enum class tokenCategory
     /*
     Token is a space character
     */
-    SEP_SPACE
+    SEP_SPACE,
+
+    // TODO
+    // /*
+    // Token is a begin of function declaration 'func'
+    // */
+    // FUNC_DECL,
+
+    // TODO
+    // /*
+    // Token is return in function 'return'
+    // */
+    // FUNC_RETURN,
 };
 
 class Token
@@ -127,16 +140,16 @@ private:
 };
 
 template <tokenCategory Category>
-class StringOwnerToken
+class StringOwnerToken : public Token
 {
 public:
-    UndefinedToken(const std::string &token)
+    StringOwnerToken(const std::string &token)
         : Token(Category),
           token_(token)
     {
     }
 
-    UndefinedToken(std::string &&token)
+    StringOwnerToken(std::string &&token)
         : Token(Category),
           token_(std::move(token))
     {
@@ -153,29 +166,6 @@ private:
 
 using UndefinedToken = StringOwnerToken<tokenCategory::UNDEFINED>;
 using NameToken = StringOwnerToken<tokenCategory::NAME>;
-
-class NameToken : public Token
-{
-    NameToken(const std::string &token)
-        : Token(tokenCategory::NAME),
-          token_(token)
-    {
-    }
-
-    NameToken(std::string &&token)
-        : Token(tokenCategory::NAME),
-          token_(std::move(token))
-    {
-    }
-
-    std::string_view getToken() const override
-    {
-        return token_;
-    }
-
-private:
-    std::string token_;
-};
 } // namespace token
 } // namespace peach
 
