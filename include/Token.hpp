@@ -1,7 +1,7 @@
-#ifndef TOKEN_HPP
-#define TOKEN_HPP
+#pragma once
 
 #include <string>
+#include <utility>
 
 namespace peach
 {
@@ -125,48 +125,39 @@ enum class tokenCategory
 class Token
 {
 public:
-    Token(tokenCategory category)
-        : category_(std::move(category)) {}
+    Token(tokenCategory category,
+          std::string token,
+          int position)
+        : category_(std::move(category)),
+          token_(std::move(token)),
+          position_(std::move(position))
+    {
+    }
 
     tokenCategory getCategory() const noexcept
     {
         return category_;
     }
 
-    virtual std::string_view getToken() const = 0;
-
-private:
-    tokenCategory category_;
-};
-
-template <tokenCategory Category>
-class StringOwnerToken : public Token
-{
-public:
-    StringOwnerToken(const std::string &token)
-        : Token(Category),
-          token_(token)
-    {
-    }
-
-    StringOwnerToken(std::string &&token)
-        : Token(Category),
-          token_(std::move(token))
-    {
-    }
-
-    std::string_view getToken() const override
+    std::string getTokenString() const
     {
         return token_;
     }
 
-private:
-    std::string token_;
-};
+    int getPosition() const noexcept
+    {
+        return position_;
+    }
 
-using UndefinedToken = StringOwnerToken<tokenCategory::UNDEFINED>;
-using NameToken = StringOwnerToken<tokenCategory::NAME>;
+    void setCategory(tokenCategory category) noexcept
+    {
+        category_ = category;
+    }
+
+private:
+    tokenCategory category_;
+    std::string token_;
+    int position_;
+};
 } // namespace token
 } // namespace peach
-
-#endif // TOKEN_HPP
