@@ -104,9 +104,11 @@ public:
 enum tokenCategory
 {
     UNDEFINED,
-    ONE,
-    TWO,
     NAME,
+    WHILE,
+    IF,
+    ELIF,
+    ELSE,
 };
 
 class Node
@@ -176,7 +178,7 @@ public:
         return category_;
     }
 
-    std::string getToken() const noexcept
+    std::string getTokenString() const
     {
         return token_;
     }
@@ -184,6 +186,11 @@ public:
     int getPosition() const noexcept
     {
         return position_;
+    }
+
+    void setCategory(tokenCategory category) noexcept
+    {
+        category_ = category;
     }
 
 private:
@@ -265,7 +272,7 @@ private:
 };
 
 // Name here - pattern that starts with latin letter or underscore, contains latin letters, underscores and digits
-class NameFinder : public FiniteStateMachine
+class NameFinder : protected FiniteStateMachine
 {
 public:
     NameFinder()
@@ -275,14 +282,47 @@ public:
         firstNode->addTransitionToNewNode<TransitionNegation<LatinUnderscoreDigitTransition>>(tokenCategory::NAME);
         getRoot()->addTransition<TransitionNegation<LatinUnderscoreTransition>>(getRoot());
     }
+
+    std::vector<std::unique_ptr<Token>> tokenizeText(const std::string &text,
+                                                     const std::unordered_map<std::string, tokenCategory> &reservedNames = {})
+    {
+        auto tokens = FiniteStateMachine::tokenizeText(text);
+        static_assert(static_cast<int>(tokenCategory::UNDEFINED) == 0); // for unordered map
+        for (auto &token : tokens)
+        {
+            auto string = token->getTokenString();
+            auto it = reservedNames.find(string);
+            if (it == reservedNames.cend())
+            {
+                continue;
+            }
+            token->setCategory(it->second);
+        }
+        return tokens;
+    }
 };
 
 int main()
 {
     auto finder = NameFinder();
-    for (const auto &token : finder.tokenizeText("This_is_name !1this1is_name_too___    "))
+    auto text = "res = 4\n"
+                "i = 0\n"
+                "while (res != 0)\n"
+                "    i = i + 1\n"
+                "    res = res - 1\n"
+                "    if i % 2 == 0:\n"
+                "        res = res + a + b + i\n"
+                "    elif i % 2 == 1:\n"
+                "        res = 0\n"
+                "    else:\n"
+                "        res = res + c - i\n"
+                "res += c";
+    for (const auto &token : finder.tokenizeText(text, {{"while", tokenCategory::WHILE},
+                                                        {"if", tokenCategory::IF},
+                                                        {"elif", tokenCategory::ELIF},
+                                                        {"else", tokenCategory::ELSE}}))
     {
-        std::cout << token->getPosition() << " '" << token->getToken() << "'" << std::endl;
+        std::cout << token->getPosition() << " '" << token->getTokenString() << "' " << token->getCategory() << std::endl;
     }
 }
 
