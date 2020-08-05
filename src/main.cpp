@@ -240,7 +240,7 @@ private:
         if (nextNode_ && nextNode_->isTerminal())
         {
             auto tokenLen = curTokenString_.length();
-            result = std::make_unique<Token>(curNode_->getTokenCategory(),
+            result = std::make_unique<Token>(nextNode_->getTokenCategory(),
                                              std::move(curTokenString_),
                                              curTokenPos_ - tokenLen);
             curNode_ = root_;
