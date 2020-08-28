@@ -38,9 +38,9 @@ enum class tokenCategory
     /*
     Token is an operator - unary or binary,
     Descending priority:
-        - 'not', '!' logical negation
-        - 'and', '&' logical and
-        - 'or', '|'  logical or
+        - '!'       logical negation
+        - '&'       logical and
+        - '|'       logical or
         - '*'        multiplication
         - '/'        division
         - '%'        module
