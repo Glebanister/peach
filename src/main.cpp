@@ -5,11 +5,20 @@
 #include <unordered_map>
 #include <vector>
 
+#include "FsmCollection.hpp"
 #include "NameFinder.hpp"
+#include "OperatorFinder.hpp"
 
 int main()
 {
-    auto finder = peach::fsm::NameFinder();
+    using peach::token::tokenCategory;
+    using namespace peach::transition;
+    auto finder = peach::fsm::FsmCollection();
+    finder
+        .buildAppendFsm<peach::fsm::NameFinder>()
+        .buildAppendFsm<peach::fsm::OperatorFinder>(
+            std::vector<std::string>{"!", "&", "|", "*", "/", "%", "+", "-"});
+
     auto text = "res = 4\n"
                 "i = 0\n"
                 "while (res != 0)\n"
@@ -18,17 +27,20 @@ int main()
                 "    if i % 2 == 0:\n"
                 "        res = res + a + b + i\n"
                 "    elif i % 2 == 1:\n"
-                "        res = 0\n"
+                "        res_2 = 0\n"
                 "    else:\n"
                 "        res = res + c - i\n"
                 "res += c";
-    for (const auto &token : finder.tokenizeText(text, {{"while", peach::token::tokenCategory::LOOP_WHILE},
-                                                        {"if", peach::token::tokenCategory::COND_IF},
-                                                        {"elif", peach::token::tokenCategory::COND_ELIF},
-                                                        {"else", peach::token::tokenCategory::COND_ELSE}}))
+
+    // auto text = "a + b";
+
+    for (const auto &token : finder.tokenizeText(text))
     {
-        std::cout << token->getPosition() << " '" << token->getTokenString() << "' " << static_cast<int>(token->getCategory()) << std::endl;
+        if (token->getCategory() != peach::token::tokenCategory::UNDEFINED)
+            std::cout << token->getPosition() << ' ' << '\'' << token->getTokenString() << '\'' << ' ' << static_cast<int>(token->getCategory()) << std::endl;
     }
+
+    return 0;
 }
 
 /*
