@@ -1,7 +1,7 @@
 #pragma once
 
 #include <algorithm>
-#include <initializer_list>
+#include <tuple>
 #include <vector>
 
 namespace peach
@@ -22,6 +22,23 @@ public:
     {
         return true;
     }
+};
+
+template <typename... TransitionClasses> // TODO: sfinae for default-construction check
+class MergeTransitions : public CharTransition
+{
+public:
+    bool isActive(char c) override
+    {
+        return std::apply(
+            [&](TransitionClasses &... transitions) {
+                return (... || transitions.isActive(c));
+            },
+            subtransitions_);
+    }
+
+private:
+    std::tuple<TransitionClasses...> subtransitions_;
 };
 
 class RangeCharTransition : public CharTransition
@@ -73,30 +90,12 @@ public:
         : RangeCharTransition(Begin, End) {}
 };
 
-using DigitCharTransition = RangeCharTransitionTemplate<'0', '9'>;
-using LowerLatinCharTransition = RangeCharTransitionTemplate<'a', 'z'>;
-using UpperLatinCharTransition = RangeCharTransitionTemplate<'A', 'Z'>;
-
-class LatinUnderscoreTransition : public CharTransition
+template <char C>
+class SingleCharTransitionTemplate : public RangeCharTransition
 {
 public:
-    bool isActive(char c) override
-    {
-        return (('a' <= c && c <= 'z') ||
-                ('A' <= c && c <= 'Z') ||
-                c == '_');
-    }
-};
-
-class LatinUnderscoreDigitTransition : public LatinUnderscoreTransition
-{
-public:
-    using LatinUnderscoreTransition::LatinUnderscoreTransition;
-
-    bool isActive(char c) override
-    {
-        return LatinUnderscoreTransition::isActive(c) || ('0' <= c && c <= '9');
-    }
+    SingleCharTransitionTemplate()
+        : RangeCharTransition(C, C) {}
 };
 
 template <class Transition> // TODO: put SFINAE here, requires 'bool Transition::isActive()'
@@ -109,6 +108,13 @@ public:
     }
 };
 
+using DigitCharTransition = RangeCharTransitionTemplate<'0', '9'>;
+using LowerLatinCharTransition = RangeCharTransitionTemplate<'a', 'z'>;
+using UpperLatinCharTransition = RangeCharTransitionTemplate<'A', 'Z'>;
+using LatinCharTransition = MergeTransitions<LowerLatinCharTransition, UpperLatinCharTransition>;
+using UnderscoreTransition = SingleCharTransitionTemplate<'_'>;
+using LatinUnderscoreTransition = MergeTransitions<LatinCharTransition, UnderscoreTransition>;
+using LatinUnderscoreDigitTransition = MergeTransitions<LatinUnderscoreTransition, DigitCharTransition>;
 using FalseTransition = TransitionNegation<TrueTransition>;
 
 } // namespace transition
