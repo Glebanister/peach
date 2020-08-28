@@ -15,6 +15,15 @@ public:
     virtual ~CharTransition() = default;
 };
 
+class TrueTransition : public CharTransition
+{
+public:
+    bool isActive(char) override
+    {
+        return true;
+    }
+};
+
 class RangeCharTransition : public CharTransition
 {
 public:
@@ -44,7 +53,7 @@ public:
 class SetCharTransition : public CharTransition
 {
 public:
-    SetCharTransition(std::initializer_list<char> charset)
+    SetCharTransition(std::vector<char> charset)
         : charset_(std::move(charset)) {}
 
     bool isActive(char c) override
@@ -99,6 +108,8 @@ public:
         return !Transition::isActive(c);
     }
 };
+
+using FalseTransition = TransitionNegation<TrueTransition>;
 
 } // namespace transition
 } // namespace peach
