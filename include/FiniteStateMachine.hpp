@@ -38,7 +38,7 @@ public:
         {
             if (transition->isActive(c))
             {
-                return node;
+                return std::shared_ptr<Node>(node);
             }
         }
         return nullptr;
@@ -68,67 +68,59 @@ public:
     {
     }
 
-    std::vector<std::unique_ptr<token::Token>> tokenizeText(const std::string &text)
-    {
-        std::vector<std::unique_ptr<token::Token>> tokens;
-        auto processChar = [&](char c) {
-            auto newToken = followChar(c);
-            if (newToken)
-            {
-                tokens.emplace_back(std::move(newToken));
-            }
-        };
-        std::for_each(text.begin(), text.end(), processChar);
-        processChar('\0');
-        return tokens;
-    }
+    // std::vector<std::unique_ptr<token::Token>> tokenizeText(const std::string &text)
+    // {
+    //     std::vector<std::unique_ptr<token::Token>> tokens;
+    //     auto processChar = [&](char c) {
+    //         auto newToken = followChar(c);
+    //         if (newToken)
+    //         {
+    //             tokens.emplace_back(std::move(newToken));
+    //         }
+    //     };
+    //     std::for_each(text.begin(), text.end(), processChar);
+    //     processChar('\0');
+    //     return tokens;
+    // }
 
-    std::shared_ptr<Node> getRoot() const
+    std::shared_ptr<Node> getRoot() const noexcept
     {
         return root_;
     }
 
-private:
-    // Returns new Token pointer, if terminal node is reached, nullptr otherwise
-    // Does NOT includes char, that followed to the terminal
-    // TODO: is it correct?
-    // Token resets on root
-    std::unique_ptr<token::Token> followChar(char c)
+    std::shared_ptr<Node> getCurrentNode() const noexcept
     {
-        auto nextNode_ = curNode_->getNextNode(c);
-        std::unique_ptr<token::Token> result;
-        if (nextNode_ && nextNode_->isTerminal())
+        return curNode_;
+    }
+
+    // Follows char according to inner graph. If transition can not be processed, current node assigns to root
+    // Returns pair of [was push successfull; category of current node].
+    // Current node resets to root if terminal has been reached.
+    std::pair<bool, token::tokenCategory> pushChar(char c)
+    {
+        auto nextNode = curNode_->getNextNode(c);
+        token::tokenCategory prevNodeCategory = curNode_->getTokenCategory();
+        bool success = true;
+        if (!nextNode)
         {
-            auto tokenLen = curTokenString_.length();
-            result = std::make_unique<token::Token>(nextNode_->getTokenCategory(),
-                                             std::move(curTokenString_),
-                                             curTokenPos_ - tokenLen);
             curNode_ = root_;
-            curTokenString_.clear();
-            followChar(c); // TODO: infinite recursion check
-        }
-        else if (!nextNode_)
-        {
-            // TODO: maybe this action may be customized ???
-            throw std::invalid_argument("can not follow char on position " + std::to_string(curTokenPos_));
+            success = false;
         }
         else
         {
-            ++curTokenPos_;
-            curTokenString_ += c;
-            curNode_ = nextNode_;
-            if (curNode_ == root_)
+            curNode_ = nextNode;
+            if (curNode_->isTerminal())
             {
-                curTokenString_.clear();
+                prevNodeCategory = curNode_->getTokenCategory();
+                curNode_ = root_;
             }
         }
-        return result;
+        return {success, prevNodeCategory};
     }
 
+private:
     std::shared_ptr<Node> root_;
     std::shared_ptr<Node> curNode_;
-    std::string curTokenString_ = "";
-    int curTokenPos_ = 0;
 };
 } // namespace fsm
 } // namespace peach
