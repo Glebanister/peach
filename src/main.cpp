@@ -9,6 +9,8 @@
 #include "NameFinder.hpp"
 #include "OperatorFinder.hpp"
 
+#include "Transition.hpp"
+
 int main()
 {
     using peach::token::tokenCategory;
@@ -19,7 +21,8 @@ int main()
         .buildAppendFsm<peach::fsm::OperatorFinder>(
             std::vector<std::string>{"!", "&", "|", "*", "/", "%", "+", "-"});
 
-    auto text = "res = 4\n"
+    auto text = "whi = 4\n"
+                "whilel = 4\n"
                 "i = 0\n"
                 "while (res != 0)\n"
                 "    i = i + 1\n"
@@ -34,7 +37,12 @@ int main()
 
     // auto text = "a + b";
 
-    for (const auto &token : finder.tokenizeText(text))
+    for (const auto &token : finder.tokenizeText(text, {
+                                                           {"if", tokenCategory::COND_IF},
+                                                           {"elif", tokenCategory::COND_ELIF},
+                                                           {"else", tokenCategory::COND_ELSE},
+                                                           {"while", tokenCategory::LOOP_WHILE},
+                                                       }))
     {
         if (token->getCategory() != peach::token::tokenCategory::UNDEFINED)
             std::cout << token->getPosition() << ' ' << '\'' << token->getTokenString() << '\'' << ' ' << static_cast<int>(token->getCategory()) << std::endl;

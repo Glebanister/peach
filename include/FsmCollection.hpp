@@ -33,9 +33,10 @@ public:
         return appendFsm(std::make_unique<Fsm>(std::forward<FsmArgs>(args)...));
     }
 
-    // Tokenizes given text into fsm tokens.
+    // Tokenizes given text into fsm tokens. Changes reservedKeyword categories to given ones.
     // Returns vector of tokens
-    std::vector<std::unique_ptr<token::Token>> tokenizeText(const std::string &text)
+    std::vector<std::unique_ptr<token::Token>> tokenizeText(const std::string &text,
+                                                            const std::vector<std::pair<std::string, token::tokenCategory>> &reservedKeywords)
     {
         std::vector<std::unique_ptr<token::Token>> tokens;
         auto processChar = [&](char c) {
@@ -47,6 +48,16 @@ public:
         };
         std::for_each(text.begin(), text.end(), processChar);
         processChar('\0');
+        for (const auto &token : tokens)
+        {
+            for (const auto &[keyword, category] : reservedKeywords)
+            {
+                if (token->getTokenString() == keyword)
+                {
+                    token->setCategory(category);
+                }
+            }
+        }
         return tokens;
     }
 

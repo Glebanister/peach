@@ -1,5 +1,8 @@
 #pragma once
 
+#include <array>
+#include <cassert>
+
 #include "FiniteStateMachine.hpp"
 
 namespace peach

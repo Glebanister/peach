@@ -68,21 +68,6 @@ public:
     {
     }
 
-    // std::vector<std::unique_ptr<token::Token>> tokenizeText(const std::string &text)
-    // {
-    //     std::vector<std::unique_ptr<token::Token>> tokens;
-    //     auto processChar = [&](char c) {
-    //         auto newToken = followChar(c);
-    //         if (newToken)
-    //         {
-    //             tokens.emplace_back(std::move(newToken));
-    //         }
-    //     };
-    //     std::for_each(text.begin(), text.end(), processChar);
-    //     processChar('\0');
-    //     return tokens;
-    // }
-
     std::shared_ptr<Node> getRoot() const noexcept
     {
         return root_;
