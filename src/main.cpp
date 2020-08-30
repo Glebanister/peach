@@ -20,20 +20,29 @@ int main()
     finder
         .buildAppendFsm<peach::fsm::NameFinder>() //
         .buildAppendFsm<peach::fsm::OperatorFinder>(
-            std::vector<std::string>{
-                "!",
-                "&",
-                "|",
-                "*",
-                "/",
-                "%",
-                "+",
-                "-",
+            std::vector<std::pair<std::string, tokenCategory>>{
+                {"!", tokenCategory::OPERATOR_UN},
+                {"&", tokenCategory::OPERATOR_BI},
+                {"|", tokenCategory::OPERATOR_BI},
+                {"*", tokenCategory::OPERATOR_BI},
+                {"/", tokenCategory::OPERATOR_BI},
+                {"%", tokenCategory::OPERATOR_BI},
+                {"+", tokenCategory::OPERATOR_BI},
+                {"-", tokenCategory::OPERATOR_BI},
+                {"==", tokenCategory::OPERATOR_BI},
+                {"&=", tokenCategory::ASSIGNMENT},
+                {"|=", tokenCategory::ASSIGNMENT},
+                {"*=", tokenCategory::ASSIGNMENT},
+                {"/=", tokenCategory::ASSIGNMENT},
+                {"%=", tokenCategory::ASSIGNMENT},
+                {"+=", tokenCategory::ASSIGNMENT},
+                {"-=", tokenCategory::ASSIGNMENT},
+                {"=", tokenCategory::ASSIGNMENT},
             }) //
         .buildAppendFsm<peach::fsm::SingleCharFinder>(
             std::vector<std::pair<char, tokenCategory>>{
                 {'\n', tokenCategory::SEP_ENDL},
-                // {' ', tokenCategory::SEP_SPACE},
+                {' ', tokenCategory::SEP_SPACE},
                 {'\t', tokenCategory::SEP_TAB},
                 {'(', tokenCategory::BRACKET_OPEN},
                 {')', tokenCategory::BRACKET_CLOSE},
@@ -70,7 +79,7 @@ int main()
             {
                 str = "\\n";
             }
-            std::cout << token->getPosition() << ' ' << '\'' << str << '\'' << ' ' << static_cast<int>(token->getCategory()) << std::endl;
+            std::cout << token->getPosition() << ' ' << '\'' << str << '\'' << ' ' << token->getCategory() << std::endl;
         }
     }
 

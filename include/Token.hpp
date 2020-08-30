@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ostream>
 #include <string>
 #include <utility>
 
@@ -36,18 +37,24 @@ enum class tokenCategory
     VALUE,
 
     /*
-    Token is an operator - unary or binary,
+    Token is an binary operator,
     Descending priority:
-        - '!'       logical negation
-        - '&'       logical and
-        - '|'       logical or
+        - '&'        logical and
+        - '|'        logical or
         - '*'        multiplication
         - '/'        division
         - '%'        module
         - '+'        addition
         - '-'        substraction
     */
-    OPERATOR,
+    OPERATOR_BI,
+
+    /*
+    Token is an unary operator,
+    Descending priority:
+        - '!'        logical negation
+    */
+    OPERATOR_UN,
 
     /*
     Token states for assignment,
@@ -120,7 +127,31 @@ enum class tokenCategory
     // Token is return in function 'return'
     // */
     // FUNC_RETURN,
+
+    _TOKEN_TOTAL,
 };
+
+std::ostream &operator<<(std::ostream &os, tokenCategory category)
+{
+    const std::array<std::string, static_cast<std::size_t>(tokenCategory::_TOKEN_TOTAL)> tokenCategoryString = {
+        "UNDEFINED",
+        "NAME",
+        "VALUE",
+        "OPERATOR_BI",
+        "OPERATOR_UN",
+        "ASSIGNMENT",
+        "COND_IF",
+        "COND_ELIF",
+        "COND_ELSE",
+        "LOOP_WHILE",
+        "BRACKET_OPEN",
+        "BRACKET_CLOSE",
+        "SEP_ENDL",
+        "SEP_TAB",
+        "SEP_SPACE",
+    };
+    return os << tokenCategoryString[static_cast<std::size_t>(category)];
+}
 
 class Token
 {

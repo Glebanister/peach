@@ -13,21 +13,25 @@ namespace fsm
 class OperatorFinder : public FiniteStateMachine
 {
 public:
-    OperatorFinder(const std::vector<std::string> &operators)
+    OperatorFinder(const std::vector<std::pair<std::string, token::tokenCategory>> &operators)
     {
         std::for_each(operators.begin(), operators.end(), [&](const auto &pat) {
-            addOperatorPattern(pat);
+            addOperatorPattern(pat.first, pat.second);
         });
     }
 
     // Adds pattern to finite state machine.
     // Should not contain latin letters, digits, separators or underscores.
-    void addOperatorPattern(const std::string &pattern)
+    void addOperatorPattern(const std::string &pattern, token::tokenCategory category)
     {
+        if (pattern.length() == 0)
+        {
+            throw std::invalid_argument("pattern must contain at least one character");
+        }
         auto curNode = getRoot();
         std::array<std::unique_ptr<transition::CharTransition>, 2> badTransitions =
             {std::make_unique<transition::LatinUnderscoreDigitTransition>(),
-             std::make_unique<transition::SetCharTransition>(std::vector<char>{' ', '\n', '\t'})};
+             std::make_unique<transition::SetCharTransition>(std::vector<char>{' ', '\n', '\t'})}; // TODO: define what is separator
         for (char c : pattern)
         {
             for (auto &tr : badTransitions)
@@ -39,7 +43,7 @@ public:
             }
             curNode = curNode->addTransitionToNewNode<transition::SingleCharTransition>(token::tokenCategory::UNDEFINED, c);
         }
-        curNode->addTransitionToNewNode<transition::TrueTransition>(token::tokenCategory::OPERATOR);
+        curNode->addTransitionToNewNode<transition::TrueTransition>(category);
     }
 };
 } // namespace fsm
