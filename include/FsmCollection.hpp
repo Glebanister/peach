@@ -77,6 +77,11 @@ private:
         }
     }
 
+    void resetFsmId() noexcept
+    {
+        currentFsmId_ = 0;
+    }
+
     std::unique_ptr<FiniteStateMachine> &getCurrentFsm()
     {
         if (currentFsmId_ < 0)
@@ -120,6 +125,7 @@ private:
                                                      std::move(currentToken_),
                                                      tokenBeginPos);
         currentToken_.clear();
+        resetFsmId();
         return result;
     }
 
