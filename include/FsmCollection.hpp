@@ -36,7 +36,7 @@ public:
     // Tokenizes given text into fsm tokens. Changes reservedKeyword categories to given ones.
     // Returns vector of tokens
     std::vector<std::unique_ptr<token::Token>> tokenizeText(const std::string &text,
-                                                            const std::vector<std::pair<std::string, token::tokenCategory>> &reservedKeywords)
+                                                            const std::vector<std::pair<std::string, token::tokenCategory_t>> &reservedKeywords)
     {
         std::vector<std::unique_ptr<token::Token>> tokens;
         auto processChar = [&](char c) {
@@ -117,7 +117,7 @@ private:
 
     // Builds new token from currentToken_ currentTokenBeginPos_ and current node category
     // Returns unique pointer on new token
-    std::unique_ptr<token::Token> buildAndMoveCurrentToken(token::tokenCategory category)
+    std::unique_ptr<token::Token> buildAndMoveCurrentToken(token::tokenCategory_t category)
     {
         auto tokenBeginPos = currentTokenBeginPos_;
         currentTokenBeginPos_ += currentToken_.length();
@@ -131,7 +131,7 @@ private:
 
     // Tries to fit current token in fsm collection in order of adding to collection
     // Returns pair [if operation was successfull; previous node category]
-    std::pair<bool, token::tokenCategory> pushCharRecursively(char c)
+    std::pair<bool, token::tokenCategory_t> pushCharRecursively(char c)
     {
         if (auto [successfullPush, prevNodeCategory] = getCurrentFsm()->pushChar(c); !successfullPush)
         {

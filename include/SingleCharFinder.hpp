@@ -13,7 +13,7 @@ namespace fsm
 class SingleCharFinder : public FiniteStateMachine
 {
 public:
-    SingleCharFinder(const std::vector<std::pair<char, token::tokenCategory>> &chars)
+    SingleCharFinder(const std::vector<std::pair<char, token::tokenCategory_t>> &chars)
     {
         for (const auto &[ch, category] : chars)
         {

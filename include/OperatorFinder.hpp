@@ -13,7 +13,7 @@ namespace fsm
 class OperatorFinder : public FiniteStateMachine
 {
 public:
-    OperatorFinder(const std::vector<std::pair<std::string, token::tokenCategory>> &operators)
+    OperatorFinder(const std::vector<std::pair<std::string, token::tokenCategory_t>> &operators)
     {
         std::for_each(operators.begin(), operators.end(), [&](const auto &pat) {
             addOperatorPattern(pat.first, pat.second);
@@ -22,7 +22,7 @@ public:
 
     // Adds pattern to finite state machine.
     // Should not contain latin letters, digits, separators or underscores.
-    void addOperatorPattern(const std::string &pattern, token::tokenCategory category)
+    void addOperatorPattern(const std::string &pattern, token::tokenCategory_t category)
     {
         if (pattern.length() == 0)
         {

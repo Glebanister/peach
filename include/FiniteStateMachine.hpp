@@ -12,7 +12,7 @@ namespace fsm
 class Node
 {
 public:
-    Node(token::tokenCategory category = token::tokenCategory::UNDEFINED)
+    Node(token::tokenCategory_t category = token::tokenCategory::UNDEFINED)
         : category_(category)
     {
     }
@@ -25,7 +25,7 @@ public:
     }
 
     template <typename Transition, typename... TransitionArgs>
-    std::shared_ptr<Node> addTransitionToNewNode(token::tokenCategory category, TransitionArgs &&... args)
+    std::shared_ptr<Node> addTransitionToNewNode(token::tokenCategory_t category, TransitionArgs &&... args)
     {
         auto newNode = std::make_shared<Node>(category);
         addTransition<Transition>(newNode, std::forward<TransitionArgs>(args)...);
@@ -49,14 +49,14 @@ public:
         return category_ != token::tokenCategory::UNDEFINED;
     }
 
-    token::tokenCategory getTokenCategory() const noexcept
+    token::tokenCategory_t gettokenCategory_t() const noexcept
     {
         return category_;
     }
 
 private:
     std::vector<std::pair<std::unique_ptr<transition::CharTransition>, std::shared_ptr<Node>>> transitions_;
-    token::tokenCategory category_;
+    token::tokenCategory_t category_;
 };
 
 class FiniteStateMachine
@@ -81,10 +81,10 @@ public:
     // Follows char according to inner graph. If transition can not be processed, current node assigns to root
     // Returns pair of [was push successfull; category of current node].
     // Current node resets to root if terminal has been reached.
-    std::pair<bool, token::tokenCategory> pushChar(char c)
+    std::pair<bool, token::tokenCategory_t> pushChar(char c)
     {
         auto nextNode = curNode_->getNextNode(c);
-        token::tokenCategory prevNodeCategory = curNode_->getTokenCategory();
+        token::tokenCategory_t prevNodeCategory = curNode_->gettokenCategory_t();
         bool success = true;
         if (!nextNode)
         {
@@ -96,7 +96,7 @@ public:
             curNode_ = nextNode;
             if (curNode_->isTerminal())
             {
-                prevNodeCategory = curNode_->getTokenCategory();
+                prevNodeCategory = curNode_->gettokenCategory_t();
                 curNode_ = root_;
             }
         }

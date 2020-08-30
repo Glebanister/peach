@@ -8,132 +8,86 @@ namespace peach
 {
 namespace token
 {
-enum class tokenCategory
+using tokenCategory_t = int;
+
+struct tokenCategory
 {
-    /*
-    Token is undefined
-    */
-    UNDEFINED,
+    static constexpr std::size_t
+        UNDEFINED = 0,
 
-    /*
-    Token is a name,
-    Starts with a latin letter,
-    May contain:
-        - contains digits
-        - latin letters
-        - underscores
-    Examples:
-        - 'VariableName1'
-        - 'variable_name_2' 
-    */
-    NAME,
+        // Token is a name,
+        // Starts with a latin letter,
+        // May contain:
+        //     - contains digits
+        //     - latin letters
+        //     - underscores
+        // Examples:
+        //     - 'VariableName1'
+        //     - 'variable_name_2'
+        NAME = 1,
 
-    /*
-    Token is a value - predefined, or user-defined,
-    Examples:
-        - '123'                for std::int32_t
-        - '"this is a string"' for std::string
-    */
-    VALUE,
+        // Token is a value - predefined, or user-defined,
+        // Examples:
+        //     - '123'                for std::int32_t
+        //     - '"this is a string"' for std::string
+        VALUE = 2,
 
-    /*
-    Token is an binary operator,
-    Descending priority:
-        - '&'        logical and
-        - '|'        logical or
-        - '*'        multiplication
-        - '/'        division
-        - '%'        module
-        - '+'        addition
-        - '-'        substraction
-    */
-    OPERATOR_BI,
+        // Token is an binary operator,
+        // Descending priority:
+        //     - '&'        logical and
+        //     - '|'        logical or
+        //     - '*'        multiplication
+        //     - '/'        division
+        //     - '%'        module
+        //     - '+'        addition
+        //     - '-'        substraction
+        OPERATOR_BI = 3,
 
-    /*
-    Token is an unary operator,
-    Descending priority:
-        - '!'        logical negation
-    */
-    OPERATOR_UN,
+        // Token is an unary operator,
+        // Descending priority:
+        //     - '!'        logical negation
+        OPERATOR_UN = 4,
 
-    /*
-    Token states for assignment,
-    Only name token may be on the left,
-    Any expression could be on the right.
-        - '='  assign
-        - 'X=' X and assign
-    */
-    ASSIGNMENT,
+        // Token states for assignment,
+        // Only name token may be on the left,
+        // Any expression could be on the right.
+        //     - '='  assign
+        //     - 'X=' X and assign
+        ASSIGNMENT = 5,
 
-    /*
-    Token is 'if' in conditional chain
-    */
-    COND_IF,
+        // Token is 'if' in conditional chain
+        COND_IF = 6,
 
-    /*
-    Token is 'elif' in conditional chain
-    */
-    COND_ELIF,
+        // Token is 'elif' in conditional chain
+        COND_ELIF = 7,
 
-    /*
-    Token is 'else' in conditional chain
-    */
-    COND_ELSE,
+        // Token is 'else' in conditional chain
+        COND_ELSE = 8,
 
-    // TODO
-    // /*
-    // Token is 'for' loop
-    // */
-    // LOOP_FOR,
+        // Token is 'while' loop
+        LOOP_WHILE = 9,
 
-    /*
-    Token is 'while' loop
-    */
-    LOOP_WHILE,
+        // Token is a opening round bracket
+        BRACKET_OPEN = 10,
 
-    /*
-    Token is a opening round bracket
-    */
-    BRACKET_OPEN,
+        // Token is a closing round bracket
+        BRACKET_CLOSE = 11,
 
-    /*
-    Token is a closing round bracket
-    */
-    BRACKET_CLOSE,
+        // Token is an endline character
+        SEP_ENDL = 12,
 
-    /*
-    Token is an endline character
-    */
-    SEP_ENDL,
+        // Token is a tabulation character
+        SEP_TAB = 13,
 
-    /*
-    Token is a tabulation character
-    */
-    SEP_TAB,
+        // Token is a space character
+        SEP_SPACE = 14,
 
-    /*
-    Token is a space character
-    */
-    SEP_SPACE,
-
-    // TODO
-    // /*
-    // Token is a begin of function declaration 'func'
-    // */
-    // FUNC_DECL,
-
-    // TODO
-    // /*
-    // Token is return in function 'return'
-    // */
-    // FUNC_RETURN,
-
-    _TOKEN_TOTAL,
+        _TOKEN_TOTAL = 15;
 };
 
-std::ostream &operator<<(std::ostream &os, tokenCategory category)
+std::ostream &operator<<(std::ostream &os, tokenCategory_t category)
 {
-    const std::array<std::string, static_cast<std::size_t>(tokenCategory::_TOKEN_TOTAL)> tokenCategoryString = {
+    const std::array<std::string, static_cast<std::size_t>(tokenCategory::_TOKEN_TOTAL)> tokenCategory_tString = {
         "UNDEFINED",
         "NAME",
         "VALUE",
@@ -150,13 +104,13 @@ std::ostream &operator<<(std::ostream &os, tokenCategory category)
         "SEP_TAB",
         "SEP_SPACE",
     };
-    return os << tokenCategoryString[static_cast<std::size_t>(category)];
+    return os << tokenCategory_tString[static_cast<std::size_t>(category)];
 }
 
 class Token
 {
 public:
-    Token(tokenCategory category,
+    Token(tokenCategory_t category,
           std::string token,
           int position)
         : category_(std::move(category)),
@@ -165,7 +119,7 @@ public:
     {
     }
 
-    tokenCategory getCategory() const noexcept
+    tokenCategory_t getCategory() const noexcept
     {
         return category_;
     }
@@ -175,20 +129,36 @@ public:
         return token_;
     }
 
+    std::string getAdditionalData() const
+    {
+        return additionalData_;
+    }
+
     int getPosition() const noexcept
     {
         return position_;
     }
 
-    void setCategory(tokenCategory category) noexcept
+    void setCategory(tokenCategory_t category) noexcept
     {
         category_ = category;
     }
 
+    void setAdditionalData(const std::string &data)
+    {
+        additionalData_ = data;
+    }
+
+    void setAdditionalData(std::string &&data)
+    {
+        additionalData_ = std::move(data);
+    }
+
 private:
-    tokenCategory category_;
+    tokenCategory_t category_;
     std::string token_;
     int position_;
+    std::string additionalData_;
 };
 } // namespace token
 } // namespace peach

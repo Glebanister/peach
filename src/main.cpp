@@ -15,12 +15,13 @@
 int main()
 {
     using peach::token::tokenCategory;
+    using peach::token::tokenCategory_t;
     using namespace peach::transition;
     auto finder = peach::fsm::FsmCollection();
     finder
         .buildAppendFsm<peach::fsm::NameFinder>() //
         .buildAppendFsm<peach::fsm::OperatorFinder>(
-            std::vector<std::pair<std::string, tokenCategory>>{
+            std::vector<std::pair<std::string, tokenCategory_t>>{
                 {"!", tokenCategory::OPERATOR_UN},
                 {"&", tokenCategory::OPERATOR_BI},
                 {"|", tokenCategory::OPERATOR_BI},
@@ -29,6 +30,7 @@ int main()
                 {"%", tokenCategory::OPERATOR_BI},
                 {"+", tokenCategory::OPERATOR_BI},
                 {"-", tokenCategory::OPERATOR_BI},
+                {"=", tokenCategory::ASSIGNMENT},
                 {"==", tokenCategory::OPERATOR_BI},
                 {"&=", tokenCategory::ASSIGNMENT},
                 {"|=", tokenCategory::ASSIGNMENT},
@@ -37,10 +39,9 @@ int main()
                 {"%=", tokenCategory::ASSIGNMENT},
                 {"+=", tokenCategory::ASSIGNMENT},
                 {"-=", tokenCategory::ASSIGNMENT},
-                {"=", tokenCategory::ASSIGNMENT},
             }) //
         .buildAppendFsm<peach::fsm::SingleCharFinder>(
-            std::vector<std::pair<char, tokenCategory>>{
+            std::vector<std::pair<char, tokenCategory_t>>{
                 {'\n', tokenCategory::SEP_ENDL},
                 {' ', tokenCategory::SEP_SPACE},
                 {'\t', tokenCategory::SEP_TAB},
@@ -74,12 +75,13 @@ int main()
     {
         if (token->getCategory() != peach::token::tokenCategory::UNDEFINED)
         {
-            std::string str = token->getTokenString();
-            if (str == "\n")
-            {
-                str = "\\n";
-            }
-            std::cout << token->getPosition() << ' ' << '\'' << str << '\'' << ' ' << token->getCategory() << std::endl;
+            std::cout << token->getTokenString();
+            // std::string str = token->getTokenString();
+            // if (str == "\n")
+            // {
+            //     str = "\\n";
+            // }
+            // std::cout << token->getPosition() << ' ' << '\'' << str << '\'' << ' ' << token->getCategory() << std::endl;
         }
     }
 
