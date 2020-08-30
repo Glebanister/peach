@@ -8,6 +8,7 @@
 #include "FsmCollection.hpp"
 #include "NameFinder.hpp"
 #include "OperatorFinder.hpp"
+#include "SingleCharFinder.hpp"
 
 #include "Transition.hpp"
 
@@ -17,12 +18,30 @@ int main()
     using namespace peach::transition;
     auto finder = peach::fsm::FsmCollection();
     finder
-        .buildAppendFsm<peach::fsm::NameFinder>()
+        .buildAppendFsm<peach::fsm::NameFinder>() //
         .buildAppendFsm<peach::fsm::OperatorFinder>(
-            std::vector<std::string>{"!", "&", "|", "*", "/", "%", "+", "-"});
+            std::vector<std::string>{
+                "!",
+                "&",
+                "|",
+                "*",
+                "/",
+                "%",
+                "+",
+                "-",
+            }) //
+        .buildAppendFsm<peach::fsm::SingleCharFinder>(
+            std::vector<std::pair<char, tokenCategory>>{
+                {'\n', tokenCategory::SEP_ENDL},
+                // {' ', tokenCategory::SEP_SPACE},
+                {'\t', tokenCategory::SEP_TAB},
+                {'(', tokenCategory::BRACKET_OPEN},
+                {')', tokenCategory::BRACKET_CLOSE},
+            }) //
+        ;
 
-    auto text = "whi = 4\n"
-                "whilel = 4\n"
+    auto text = "whi=4\n"
+                "whilel=4\n"
                 "i = 0\n"
                 "while (res != 0)\n"
                 "    i = i + 1\n"
@@ -35,7 +54,7 @@ int main()
                 "        res = res + c - i\n"
                 "res += c";
 
-    // auto text = "a + b";
+    // auto text = "+b";
 
     for (const auto &token : finder.tokenizeText(text, {
                                                            {"if", tokenCategory::COND_IF},
@@ -45,7 +64,14 @@ int main()
                                                        }))
     {
         if (token->getCategory() != peach::token::tokenCategory::UNDEFINED)
-            std::cout << token->getPosition() << ' ' << '\'' << token->getTokenString() << '\'' << ' ' << static_cast<int>(token->getCategory()) << std::endl;
+        {
+            std::string str = token->getTokenString();
+            if (str == "\n")
+            {
+                str = "\\n";
+            }
+            std::cout << token->getPosition() << ' ' << '\'' << str << '\'' << ' ' << static_cast<int>(token->getCategory()) << std::endl;
+        }
     }
 
     return 0;
