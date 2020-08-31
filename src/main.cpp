@@ -7,6 +7,7 @@
 
 #include "FsmCollection.hpp"
 #include "NameFinder.hpp"
+#include "NumberFinder.hpp"
 #include "OperatorFinder.hpp"
 #include "SingleCharFinder.hpp"
 
@@ -19,7 +20,9 @@ int main()
     using namespace peach::transition;
     auto finder = peach::fsm::FsmCollection();
     finder
-        .buildAppendFsm<peach::fsm::NameFinder>() //
+        .buildAppendFsm<peach::fsm::NameFinder>()                                     //
+        .buildAppendFsm<peach::fsm::NumberFinder>(tokenCategory::VALUE_FLOATING, '.') //
+        .buildAppendFsm<peach::fsm::NumberFinder>(tokenCategory::VALUE_INT)           //
         .buildAppendFsm<peach::fsm::OperatorFinder>(
             std::vector<std::pair<std::string, tokenCategory_t>>{
                 {"!", tokenCategory::OPERATOR_UN},
@@ -50,8 +53,8 @@ int main()
             }) //
         ;
 
-    auto text = "whi=4\n"
-                "whilel=4\n"
+    auto text = "whi = 1 -4\n"
+                "whilel=4123123\n"
                 "i = 0\n"
                 "while (res != 0)\n"
                 "    i = i + 1\n"
@@ -64,8 +67,6 @@ int main()
                 "        res = res + c - i\n"
                 "res += c";
 
-    // auto text = "+b";
-
     for (const auto &token : finder.tokenizeText(text, {
                                                            {"if", tokenCategory::COND_IF},
                                                            {"elif", tokenCategory::COND_ELIF},
@@ -75,13 +76,15 @@ int main()
     {
         if (token->getCategory() != peach::token::tokenCategory::UNDEFINED)
         {
-            std::cout << token->getTokenString();
-            // std::string str = token->getTokenString();
-            // if (str == "\n")
-            // {
-            //     str = "\\n";
-            // }
-            // std::cout << token->getPosition() << ' ' << '\'' << str << '\'' << ' ' << token->getCategory() << std::endl;
+            // std::cout << token->getTokenString();
+            std::string str = token->getTokenString();
+            if (str == "\n")
+            {
+                str = "\\n";
+            }
+            std::cout << token->getPosition() << ' ' << '\'' << str << '\'' << ' ';
+            peach::token::printCategory(token->getCategory());
+            std::cout << std::endl;
         }
     }
 

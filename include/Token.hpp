@@ -8,11 +8,11 @@ namespace peach
 {
 namespace token
 {
-using tokenCategory_t = int;
+using tokenCategory_t = std::size_t;
 
 struct tokenCategory
 {
-    static constexpr std::size_t
+    static constexpr tokenCategory_t
         UNDEFINED = 0,
 
         // Token is a name,
@@ -82,12 +82,20 @@ struct tokenCategory
         // Token is a space character
         SEP_SPACE = 14,
 
-        _TOKEN_TOTAL = 15;
+        // Token is floating point number
+        // Example: 420.69
+        VALUE_FLOATING = 15,
+
+        // Token is integer
+        // Example: 239
+        VALUE_INT = 16,
+
+        _TOKEN_TOTAL = 17;
 };
 
-std::ostream &operator<<(std::ostream &os, tokenCategory_t category)
+void printCategory(tokenCategory_t category)
 {
-    const std::array<std::string, static_cast<std::size_t>(tokenCategory::_TOKEN_TOTAL)> tokenCategory_tString = {
+    const std::array<std::string, static_cast<std::size_t>(tokenCategory::_TOKEN_TOTAL)> tokenCategoryString = {
         "UNDEFINED",
         "NAME",
         "VALUE",
@@ -103,8 +111,10 @@ std::ostream &operator<<(std::ostream &os, tokenCategory_t category)
         "SEP_ENDL",
         "SEP_TAB",
         "SEP_SPACE",
+        "VALUE_FLOATING",
+        "VALUE_INT",
     };
-    return os << tokenCategory_tString[static_cast<std::size_t>(category)];
+    std::cout << tokenCategoryString[static_cast<std::size_t>(category)];
 }
 
 class Token
