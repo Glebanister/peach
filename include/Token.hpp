@@ -90,7 +90,13 @@ struct tokenCategory
         // Example: 239
         VALUE_INT = 16,
 
-        _TOKEN_TOTAL = 17;
+        // Token is colon ':'
+        COLON = 17,
+
+        // Token is semicolon ';'
+        SEMICOLON = 18,
+
+        _TOKEN_TOTAL = 19;
 };
 
 void printCategory(tokenCategory_t category)
@@ -113,6 +119,8 @@ void printCategory(tokenCategory_t category)
         "SEP_SPACE",
         "VALUE_FLOATING",
         "VALUE_INT",
+        "COLON",
+        "SEMICOLON",
     };
     std::cout << tokenCategoryString[static_cast<std::size_t>(category)];
 }

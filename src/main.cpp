@@ -50,6 +50,8 @@ int main()
                 {'\t', tokenCategory::SEP_TAB},
                 {'(', tokenCategory::BRACKET_OPEN},
                 {')', tokenCategory::BRACKET_CLOSE},
+                {':', tokenCategory::COLON},
+                {';', tokenCategory::SEMICOLON},
             }) //
         ;
 
@@ -65,7 +67,7 @@ int main()
                 "        res_2 = 0\n"
                 "    else:\n"
                 "        res = res + c - i\n"
-                "res += c";
+                "res += c\n";
 
     for (const auto &token : finder.tokenizeText(text, {
                                                            {"if", tokenCategory::COND_IF},
@@ -76,15 +78,15 @@ int main()
     {
         if (token->getCategory() != peach::token::tokenCategory::UNDEFINED)
         {
-            // std::cout << token->getTokenString();
-            std::string str = token->getTokenString();
-            if (str == "\n")
-            {
-                str = "\\n";
-            }
-            std::cout << token->getPosition() << ' ' << '\'' << str << '\'' << ' ';
-            peach::token::printCategory(token->getCategory());
-            std::cout << std::endl;
+            std::cout << token->getTokenString();
+            // std::string str = token->getTokenString();
+            // if (str == "\n")
+            // {
+            //     str = "\\n";
+            // }
+            // std::cout << token->getPosition() << ' ' << '\'' << str << '\'' << ' ';
+            // peach::token::printCategory(token->getCategory());
+            // std::cout << std::endl;
         }
     }
 
