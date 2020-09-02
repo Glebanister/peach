@@ -1,5 +1,6 @@
 #pragma once
 
+#include <any>
 #include <array>
 #include <functional>
 #include <memory>
@@ -30,6 +31,8 @@ public:
     virtual RvalueAndScope eval(Scope) = 0;
     virtual ~Expression() = default;
 };
+
+using ExprPtr = std::unique_ptr<Expression>;
 
 namespace details
 {
@@ -64,7 +67,7 @@ public:
     using FunctionType = std::function<VType(details::TupleGenerator_t<VType, Arity>)>;
     constexpr static std::size_t arity = Arity;
 
-    FunctionCall(std::array<std::unique_ptr<Expression>, Arity> &&expressions,
+    FunctionCall(std::array<ExprPtr, Arity> expressions,
                  FunctionType f)
         : expressions_(std::move(expressions)), f_(std::move(f)) {}
 
@@ -86,7 +89,7 @@ public:
     }
 
 private:
-    std::array<std::unique_ptr<Expression>, Arity> expressions_;
+    std::array<ExprPtr, Arity> expressions_;
     FunctionType f_;
 };
 
@@ -106,6 +109,70 @@ public:
 
 private:
     VType value_;
+};
+
+class Conditional : public Expression
+{
+public:
+    struct CondWay
+    {
+        ExprPtr condition, way;
+    };
+
+public:
+    Conditional(CondWay ifWay,
+                std::vector<CondWay> elifWay,
+                ExprPtr elseWay)
+        : ifWay_(std::move(ifWay)),
+          elifWay_(std::move(elifWay)),
+          elseWay_(std::move(elseWay))
+    {
+    }
+
+    RvalueAndScope eval(Scope scope) override
+    {
+        if (!ifWay_.condition)
+        {
+            throw std::invalid_argument("if condition can not be empty");
+        }
+        if (ifWay_.condition->eval(scope).value)
+        {
+            if (ifWay_.way)
+            {
+                ifWay_.way->eval(scope);
+            }
+            return {VType(), scope}; // TODO: wrong, because scope can't be changed
+        }
+        else
+        {
+            for (std::size_t elifTrue = 0, elifId = 0; !elifTrue && elifId < elifWay_.size(); elifId++)
+            {
+                if (!elifWay_[elifId].condition)
+                {
+                    throw std::invalid_argument("elif condition can not be empty");
+                }
+                elifTrue = elifWay_[elifId].condition->eval(scope).value;
+                if (elifTrue)
+                {
+                    if (elifWay_[elifId].way)
+                    {
+                        elifWay_[elifId].way->eval(scope);
+                    }
+                    return {VType(), scope};
+                }
+            }
+        }
+        if (elseWay_)
+        {
+            elseWay_->eval(scope);
+        }
+        return {VType(), scope};
+    }
+
+private:
+    CondWay ifWay_;
+    std::vector<CondWay> elifWay_;
+    ExprPtr elseWay_;
 };
 } // namespace expression
 } // namespace peach
