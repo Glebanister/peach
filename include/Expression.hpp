@@ -1,9 +1,9 @@
 #pragma once
 
-#include <any>
 #include <array>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -58,6 +58,16 @@ struct TupleGenerator<T, 0, Tail...>
 
 template <typename T, std::size_t N>
 using TupleGenerator_t = typename TupleGenerator<T, N>::type;
+
+template <typename T>
+inline void checkOptionalNotEmptyOrThrow(const std::optional<T> &x,
+                                         const std::string &message = "optional type is empty")
+{
+    if (!x.has_value())
+    {
+        throw std::invalid_argument("impossible to access object: " + message);
+    }
+}
 } // namespace details
 
 template <std::size_t Arity>
@@ -67,17 +77,21 @@ public:
     using FunctionType = std::function<VType(details::TupleGenerator_t<VType, Arity>)>;
     constexpr static std::size_t arity = Arity;
 
-    FunctionCall(std::array<ExprPtr, Arity> expressions,
-                 FunctionType f)
-        : expressions_(std::move(expressions)), f_(std::move(f)) {}
+    void setExpressions(const std::array<ExprPtr, Arity> &expressions) { expressions_.emplace(expressions); }
+    void setExpressions(std::array<ExprPtr, Arity> &&expressions) { expressions_.emplace(std::move(expressions)); }
+
+    void setFunction(const FunctionType &f) { f_.emplace(f); }
+    void setFunction(FunctionType &&f) { f_.emplace(std::move(f)); }
 
     RvalueAndScope eval(Scope scope) override
     {
+        details::checkOptionalNotEmptyOrThrow(expressions_, "expression is not set yet");
+        details::checkOptionalNotEmptyOrThrow(f_, "function is not set yet");
         Scope currentScope = scope;
         details::TupleGenerator_t<VType, Arity> callArgs;
         std::size_t argumentId = 0;
         auto processSingleArgument = [&](VType &argument) {
-            auto evalResult = expressions_[argumentId++]->eval(currentScope);
+            auto evalResult = expressions_.value()[argumentId++]->eval(currentScope);
             currentScope = evalResult.scope;
             argument = evalResult.value;
         };
@@ -85,12 +99,12 @@ public:
             (processSingleArgument(args), ...);
         },
                    callArgs);
-        return {f_(callArgs), currentScope};
+        return {f_.value()(callArgs), currentScope};
     }
 
 private:
-    std::array<ExprPtr, Arity> expressions_;
-    FunctionType f_;
+    std::optional<std::array<ExprPtr, Arity>> expressions_;
+    std::optional<FunctionType> f_;
 };
 
 using UnaryOperator = FunctionCall<1>;
@@ -99,8 +113,7 @@ using BinaryOperator = FunctionCall<2>;
 class VTypeValue : public Expression
 {
 public:
-    VTypeValue(VType value)
-        : value_(std::move(value)) {}
+    void setValue(VType value) { value_ = value; }
 
     RvalueAndScope eval(Scope scope) override
     {
@@ -111,68 +124,89 @@ private:
     VType value_;
 };
 
-class Conditional : public Expression
+// class Conditional : public Expression
+// {
+// public:
+//     struct CondWay
+//     {
+//         ExprPtr condition, way;
+//     };
+
+// public:
+//     Conditional(CondWay ifWay,
+//                 std::vector<CondWay> elifWay,
+//                 ExprPtr elseWay)
+//         : ifWay_(std::move(ifWay)),
+//           elifWay_(std::move(elifWay)),
+//           elseWay_(std::move(elseWay))
+//     {
+//     }
+
+//     RvalueAndScope eval(Scope scope) override
+//     {
+//         if (!ifWay_.condition)
+//         {
+//             throw std::invalid_argument("if condition can not be empty");
+//         }
+//         if (ifWay_.condition->eval(scope).value)
+//         {
+//             if (ifWay_.way)
+//             {
+//                 ifWay_.way->eval(scope);
+//             }
+//             return {VType(), scope}; // TODO: wrong, because scope can't be changed
+//         }
+//         else
+//         {
+//             for (std::size_t elifTrue = 0, elifId = 0; !elifTrue && elifId < elifWay_.size(); elifId++)
+//             {
+//                 if (!elifWay_[elifId].condition)
+//                 {
+//                     throw std::invalid_argument("elif condition can not be empty");
+//                 }
+//                 elifTrue = elifWay_[elifId].condition->eval(scope).value;
+//                 if (elifTrue)
+//                 {
+//                     if (elifWay_[elifId].way)
+//                     {
+//                         elifWay_[elifId].way->eval(scope);
+//                     }
+//                     return {VType(), scope};
+//                 }
+//             }
+//         }
+//         if (elseWay_)
+//         {
+//             elseWay_->eval(scope);
+//         }
+//         return {VType(), scope};
+//     }
+
+// private:
+//     CondWay ifWay_;
+//     std::vector<CondWay> elifWay_;
+//     ExprPtr elseWay_;
+// };
+
+class ExpressionSequence : public Expression
 {
 public:
-    struct CondWay
+    void addExpression(ExprPtr &&expr)
     {
-        ExprPtr condition, way;
-    };
-
-public:
-    Conditional(CondWay ifWay,
-                std::vector<CondWay> elifWay,
-                ExprPtr elseWay)
-        : ifWay_(std::move(ifWay)),
-          elifWay_(std::move(elifWay)),
-          elseWay_(std::move(elseWay))
-    {
+        exprs_.emplace_back(std::move(expr));
     }
 
     RvalueAndScope eval(Scope scope) override
     {
-        if (!ifWay_.condition)
-        {
-            throw std::invalid_argument("if condition can not be empty");
-        }
-        if (ifWay_.condition->eval(scope).value)
-        {
-            if (ifWay_.way)
-            {
-                ifWay_.way->eval(scope);
-            }
-            return {VType(), scope}; // TODO: wrong, because scope can't be changed
-        }
-        else
-        {
-            for (std::size_t elifTrue = 0, elifId = 0; !elifTrue && elifId < elifWay_.size(); elifId++)
-            {
-                if (!elifWay_[elifId].condition)
-                {
-                    throw std::invalid_argument("elif condition can not be empty");
-                }
-                elifTrue = elifWay_[elifId].condition->eval(scope).value;
-                if (elifTrue)
-                {
-                    if (elifWay_[elifId].way)
-                    {
-                        elifWay_[elifId].way->eval(scope);
-                    }
-                    return {VType(), scope};
-                }
-            }
-        }
-        if (elseWay_)
-        {
-            elseWay_->eval(scope);
-        }
-        return {VType(), scope};
+        VType result{};
+        std::for_each(exprs_.begin(), exprs_.end(), [&](auto &expr) {
+            result = expr->eval(scope).value;
+        });
+        return {result, scope};
     }
 
 private:
-    CondWay ifWay_;
-    std::vector<CondWay> elifWay_;
-    ExprPtr elseWay_;
+    std::vector<ExprPtr> exprs_;
 };
 } // namespace expression
 } // namespace peach
