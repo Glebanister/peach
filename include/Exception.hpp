@@ -11,31 +11,20 @@ class PeachException : public std::exception
 public:
     PeachException(const std::string &exceptionClass,
                    const std::string &exceptionMessage = "")
-        : class_(exceptionClass),
-          message_(exceptionMessage)
+        : report_(exceptionClass + (exceptionClass.empty() ? "" : (": " + exceptionMessage)))
     {
-    }
-
-    std::string getReport() const
-    {
-        auto result = class_;
-        if (!message_.empty())
-        {
-            result += ": " + message_;
-        }
-        return result;
     }
 
     const char *what() const throw()
     {
-        return getReport().c_str();
+        return report_.c_str();
     }
 
 private:
-    const std::string class_, message_;
+    const std::string report_;
 };
 
-class PositionalException : PeachException
+class PositionalException : public PeachException
 {
 public:
     PositionalException(std::size_t line,
