@@ -40,6 +40,11 @@ public:
     {
         std::vector<std::unique_ptr<token::Token>> tokens;
         auto processChar = [&](char c) {
+            if (token::isEndline(c))
+            {
+                ++currentTokenLine_;
+                currentTokenBeginPos_ = 0;
+            }
             auto newToken = pushNextChar(c);
             if (newToken)
             {
@@ -123,7 +128,8 @@ private:
         currentTokenBeginPos_ += currentToken_.length();
         auto result = std::make_unique<token::Token>(category,
                                                      std::move(currentToken_),
-                                                     tokenBeginPos);
+                                                     currentTokenLine_ + 1,
+                                                     tokenBeginPos + 1);
         currentToken_.clear();
         resetFsmId();
         return result;
@@ -169,6 +175,7 @@ private:
     int currentFsmId_ = -1;                                       // current fsm id in vector
     std::string currentToken_ = "";                               // current token string
     std::size_t currentTokenBeginPos_ = 0;                        // current token begin position
+    std::size_t currentTokenLine_ = 0;
 };
 } // namespace fsm
 } // namespace peach

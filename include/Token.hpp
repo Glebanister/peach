@@ -132,16 +132,18 @@ class Token
 public:
     Token(tokenCategory_t category,
           std::string token,
-          int position)
+          std::size_t line,
+          std::size_t position)
         : category_(std::move(category)),
           token_(std::move(token)),
+          line_(std::move(line)),
           position_(std::move(position))
     {
     }
 
     tokenCategory_t getCategory() const noexcept { return category_; }
     std::string getTokenString() const { return token_; }
-    std::size_t getLine() const noexcept { return line_; } // TODO: calculate line!!!!
+    std::size_t getLine() const noexcept { return line_; }
     int getPosition() const noexcept { return position_; }
 
     void setCategory(tokenCategory_t category) noexcept { category_ = category; }
@@ -157,6 +159,11 @@ using TokenPtr = std::unique_ptr<Token>;
 inline constexpr bool isEndline(tokenCategory_t category) noexcept
 {
     return category == tokenCategory::SEP_ENDL;
+}
+
+inline constexpr bool isEndline(char c) noexcept
+{
+    return c == '\n';
 }
 
 inline bool isEndline(const TokenPtr &tk) noexcept
