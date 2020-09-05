@@ -9,6 +9,8 @@
 #include <type_traits>
 #include <unordered_map>
 
+#include "Token.hpp"
+
 namespace peach
 {
 namespace expression
@@ -19,20 +21,38 @@ using VType = std::int32_t; // TODO: wtf is this #1
 // Scope is the current state of visible variables
 using Scope = std::unordered_map<std::string, VType>; // TODO: wtf is this #2
 
-struct RvalueAndScope
-{
-    VType value;
-    Scope scope;
-};
+class Expression;
+
+using ExprPtr = std::unique_ptr<Expression>;
+using ExprShPtr = std::shared_ptr<Expression>;
 
 class Expression
 {
 public:
-    virtual RvalueAndScope eval(Scope) = 0;
+    // Evaluates all expression
+    // Returns [evaluation result; state]
+    virtual VType eval(Scope &) = 0;
+
+    virtual void addExpressionFromNextIndentationLevel(ExprShPtr expr) = 0;
+
+    virtual bool doesNeedBlockFromNextIndentationLevel() const noexcept = 0;
+
     virtual ~Expression() = default;
 };
 
-using ExprPtr = std::unique_ptr<Expression>;
+class SingleIndentationLevelExpression : public Expression
+{
+public:
+    bool doesNeedBlockFromNextIndentationLevel() const noexcept final
+    {
+        return false;
+    }
+
+    void addExpressionFromNextIndentationLevel(ExprShPtr) final
+    {
+        throw std::invalid_argument("SingleIndentationLevelExpression can not be extended with expression from next indentation level");
+    }
+};
 
 namespace details
 {
@@ -71,142 +91,199 @@ inline void checkOptionalNotEmptyOrThrow(const std::optional<T> &x,
 } // namespace details
 
 template <std::size_t Arity>
-class FunctionCall : public Expression
+class FunctionCall : public SingleIndentationLevelExpression
 {
 public:
     using FunctionType = std::function<VType(details::TupleGenerator_t<VType, Arity>)>;
     constexpr static std::size_t arity = Arity;
 
-    void setExpressions(const std::array<ExprPtr, Arity> &expressions) { expressions_.emplace(expressions); }
-    void setExpressions(std::array<ExprPtr, Arity> &&expressions) { expressions_.emplace(std::move(expressions)); }
+    void setExpressions(const std::array<ExprShPtr, Arity> &expressions) { expressions_.emplace(expressions); }
+    void setExpressions(std::array<ExprShPtr, Arity> &&expressions) { expressions_.emplace(std::move(expressions)); }
 
     void setFunction(const FunctionType &f) { f_.emplace(f); }
     void setFunction(FunctionType &&f) { f_.emplace(std::move(f)); }
 
-    RvalueAndScope eval(Scope scope) override
+    VType eval(Scope &scope) override
     {
         details::checkOptionalNotEmptyOrThrow(expressions_, "expression is not set yet");
         details::checkOptionalNotEmptyOrThrow(f_, "function is not set yet");
-        Scope currentScope = scope;
         details::TupleGenerator_t<VType, Arity> callArgs;
         std::size_t argumentId = 0;
         auto processSingleArgument = [&](VType &argument) {
-            auto evalResult = expressions_.value()[argumentId++]->eval(currentScope);
-            currentScope = evalResult.scope;
-            argument = evalResult.value;
+            argument = expressions_.value()[argumentId++]->eval(scope);
         };
         std::apply([&](auto &&... args) {
             (processSingleArgument(args), ...);
         },
                    callArgs);
-        return {f_.value()(callArgs), currentScope};
+        return f_.value()(callArgs);
     }
 
 private:
-    std::optional<std::array<ExprPtr, Arity>> expressions_;
+    std::optional<std::array<ExprShPtr, Arity>> expressions_;
     std::optional<FunctionType> f_;
 };
 
 using UnaryOperator = FunctionCall<1>;
 using BinaryOperator = FunctionCall<2>;
 
-class VTypeValue : public Expression
+class VTypeValue : public SingleIndentationLevelExpression
 {
 public:
+    VTypeValue(VType v = 0)
+        : value_(v) {}
+
     void setValue(VType value) { value_ = value; }
 
-    RvalueAndScope eval(Scope scope) override
+    VType eval(Scope &) override
     {
-        return {value_, scope};
+        return value_;
     }
 
 private:
     VType value_;
 };
 
-// class Conditional : public Expression
-// {
-// public:
-//     struct CondWay
-//     {
-//         ExprPtr condition, way;
-//     };
-
-// public:
-//     Conditional(CondWay ifWay,
-//                 std::vector<CondWay> elifWay,
-//                 ExprPtr elseWay)
-//         : ifWay_(std::move(ifWay)),
-//           elifWay_(std::move(elifWay)),
-//           elseWay_(std::move(elseWay))
-//     {
-//     }
-
-//     RvalueAndScope eval(Scope scope) override
-//     {
-//         if (!ifWay_.condition)
-//         {
-//             throw std::invalid_argument("if condition can not be empty");
-//         }
-//         if (ifWay_.condition->eval(scope).value)
-//         {
-//             if (ifWay_.way)
-//             {
-//                 ifWay_.way->eval(scope);
-//             }
-//             return {VType(), scope}; // TODO: wrong, because scope can't be changed
-//         }
-//         else
-//         {
-//             for (std::size_t elifTrue = 0, elifId = 0; !elifTrue && elifId < elifWay_.size(); elifId++)
-//             {
-//                 if (!elifWay_[elifId].condition)
-//                 {
-//                     throw std::invalid_argument("elif condition can not be empty");
-//                 }
-//                 elifTrue = elifWay_[elifId].condition->eval(scope).value;
-//                 if (elifTrue)
-//                 {
-//                     if (elifWay_[elifId].way)
-//                     {
-//                         elifWay_[elifId].way->eval(scope);
-//                     }
-//                     return {VType(), scope};
-//                 }
-//             }
-//         }
-//         if (elseWay_)
-//         {
-//             elseWay_->eval(scope);
-//         }
-//         return {VType(), scope};
-//     }
-
-// private:
-//     CondWay ifWay_;
-//     std::vector<CondWay> elifWay_;
-//     ExprPtr elseWay_;
-// };
-
-class ExpressionSequence : public Expression
+class Conditional : public Expression
 {
 public:
-    void addExpression(ExprPtr &&expr)
+    Conditional(ExprShPtr ifCond)
+        : ifCond_(std::move(ifCond)) {}
+
+    bool doesNeedBlockFromNextIndentationLevel() const noexcept final
+    {
+        return !ifWay_;
+    }
+
+    void addExpressionFromNextIndentationLevel(ExprShPtr expr) override
+    {
+        if (!ifWay_)
+        {
+            ifWay_ = std::move(expr);
+        }
+        else if (!elseWay_)
+        {
+            elseWay_ = std::move(expr);
+        }
+        else
+        {
+            throw std::invalid_argument("Conditional is already has if and else ways");
+        }
+    }
+
+    VType eval(Scope &scope) override
+    {
+        if (ifCond_->eval(scope))
+        {
+            auto result = VType{};
+            if (ifWay_)
+            {
+                result = ifWay_->eval(scope);
+            }
+            return result;
+        }
+        else if (elseWay_)
+        {
+            return elseWay_->eval(scope);
+        }
+        return VType{};
+    }
+
+private:
+    ExprShPtr ifCond_, ifWay_, elseWay_;
+};
+
+class ExpressionSequence : public SingleIndentationLevelExpression
+{
+public:
+    void addExpression(ExprShPtr expr)
     {
         exprs_.emplace_back(std::move(expr));
     }
 
-    RvalueAndScope eval(Scope scope) override
+    VType eval(Scope &scope) override
     {
         VType result{};
         std::for_each(exprs_.begin(), exprs_.end(), [&](auto &expr) {
-            result = expr->eval(scope).value;
+            result = expr->eval(scope);
         });
-        return {result, scope};
+        return result;
     }
 
 private:
-    std::vector<ExprPtr> exprs_;
+    std::vector<ExprShPtr> exprs_;
+};
+
+class LoopWhile : public Expression
+{
+public:
+    LoopWhile(ExprShPtr cond)
+        : loopCond_(std::move(cond)) {}
+
+    bool doesNeedBlockFromNextIndentationLevel() const noexcept final
+    {
+        return true;
+    }
+
+    void addExpressionFromNextIndentationLevel(ExprShPtr expr) override
+    {
+        if (loopBody_)
+        {
+            throw std::invalid_argument("loop while already has body");
+        }
+        loopBody_ = expr;
+    }
+
+    VType eval(Scope &scope) override
+    {
+        VType result{};
+        while (loopCond_->eval(scope))
+        {
+            result = loopCond_->eval(scope);
+        }
+        return result;
+    }
+
+private:
+    ExprShPtr loopCond_;
+    ExprShPtr loopBody_;
+};
+
+class AssignExpression : public SingleIndentationLevelExpression
+{
+public:
+    AssignExpression(const std::string &name)
+        : varName_(name) {}
+
+    void setExpression(ExprShPtr expr) { expr_ = std::move(expr); }
+
+    VType eval(Scope &scope) override
+    {
+        if (!expr_)
+        {
+            throw std::invalid_argument("AssignExpression does not have expression yet");
+        }
+        return scope[varName_] = expr_->eval(scope); // TODO: invisibility .........
+    }
+
+private:
+    std::string varName_;
+    ExprShPtr expr_;
+};
+
+class VariableAccess : public SingleIndentationLevelExpression
+{
+public:
+    VariableAccess(const std::string &name)
+        : varName_(name) {}
+
+    VType eval(Scope &scope) override
+    {
+        return scope[varName_]; // TODO: undefined variable....
+    }
+
+private:
+    std::string varName_;
 };
 } // namespace expression
 } // namespace peach
