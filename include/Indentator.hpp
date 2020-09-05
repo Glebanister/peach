@@ -50,7 +50,8 @@ public:
             {
                 if (curBlockPos != singleIndentationBlock.begin())
                 {
-                    throw exception::IndentationException((*curToken)->getLine(), (*curToken)->getPosition());
+                    exception::throwFromTokenIterator<exception::IndentationError>(curToken); // TODO: not as fast as user may want
+                                                                                              // Maybe we can return std::variant<..., Exception>
                 }
                 else
                 {

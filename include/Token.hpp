@@ -12,6 +12,8 @@ using tokenCategory_t = std::size_t;
 
 struct tokenCategory
 {
+    tokenCategory() = delete;
+
     static constexpr tokenCategory_t
         UNDEFINED = 0,
 
@@ -99,7 +101,7 @@ struct tokenCategory
         _TOKEN_TOTAL = 19;
 };
 
-void printCategory(tokenCategory_t category)
+inline void printCategory(tokenCategory_t category)
 {
     const std::array<std::string, static_cast<std::size_t>(tokenCategory::_TOKEN_TOTAL)> tokenCategoryString = {
         "UNDEFINED",
@@ -137,46 +139,42 @@ public:
     {
     }
 
-    tokenCategory_t getCategory() const noexcept
-    {
-        return category_;
-    }
+    tokenCategory_t getCategory() const noexcept { return category_; }
+    std::string getTokenString() const { return token_; }
+    std::size_t getLine() const noexcept { return line_; } // TODO: calculate line!!!!
+    int getPosition() const noexcept { return position_; }
 
-    std::string getTokenString() const
-    {
-        return token_;
-    }
-
-    std::string getAdditionalData() const
-    {
-        return additionalData_;
-    }
-
-    int getPosition() const noexcept
-    {
-        return position_;
-    }
-
-    void setCategory(tokenCategory_t category) noexcept
-    {
-        category_ = category;
-    }
-
-    void setAdditionalData(const std::string &data)
-    {
-        additionalData_ = data;
-    }
-
-    void setAdditionalData(std::string &&data)
-    {
-        additionalData_ = std::move(data);
-    }
+    void setCategory(tokenCategory_t category) noexcept { category_ = category; }
 
 private:
     tokenCategory_t category_;
     std::string token_;
-    int position_;
-    std::string additionalData_;
+    std::size_t line_, position_;
 };
+
+using TokenPtr = std::unique_ptr<Token>;
+
+inline constexpr bool isEndline(tokenCategory_t category) noexcept
+{
+    return category == tokenCategory::SEP_ENDL;
+}
+
+inline bool isEndline(const TokenPtr &tk) noexcept
+{
+    return isEndline(tk->getCategory());
+}
+
+inline constexpr bool isSeparator(tokenCategory_t category) noexcept
+{
+    return category == tokenCategory::SEP_ENDL ||
+           category == tokenCategory::SEP_SPACE ||
+           category == tokenCategory::SEP_TAB;
+}
+
+inline bool isSeparator(const TokenPtr &tk) noexcept
+{
+    return isSeparator(tk->getCategory());
+}
+
 } // namespace token
 } // namespace peach
