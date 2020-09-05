@@ -1,7 +1,9 @@
 #include <algorithm>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <numeric>
+#include <streambuf>
 #include <unordered_map>
 #include <vector>
 
@@ -26,23 +28,16 @@ int main()
         .buildAppendFsm<peach::fsm::NumberFinder>(tokenCategory::VALUE_INT)           //
         .buildAppendFsm<peach::fsm::OperatorFinder>(
             std::vector<std::pair<std::string, tokenCategory_t>>{
-                {"!", tokenCategory::OPERATOR_UN},
                 {"&", tokenCategory::OPERATOR_BI},
                 {"|", tokenCategory::OPERATOR_BI},
                 {"*", tokenCategory::OPERATOR_BI},
                 {"/", tokenCategory::OPERATOR_BI},
-                {"%", tokenCategory::OPERATOR_BI},
                 {"+", tokenCategory::OPERATOR_BI},
                 {"-", tokenCategory::OPERATOR_BI},
-                {"=", tokenCategory::ASSIGNMENT},
+                {":=", tokenCategory::ASSIGNMENT},
                 {"==", tokenCategory::OPERATOR_BI},
-                {"&=", tokenCategory::ASSIGNMENT},
-                {"|=", tokenCategory::ASSIGNMENT},
-                {"*=", tokenCategory::ASSIGNMENT},
-                {"/=", tokenCategory::ASSIGNMENT},
-                {"%=", tokenCategory::ASSIGNMENT},
-                {"+=", tokenCategory::ASSIGNMENT},
-                {"-=", tokenCategory::ASSIGNMENT},
+                {"!=", tokenCategory::OPERATOR_BI},
+                {"!", tokenCategory::OPERATOR_UN},
             }) //
         .buildAppendFsm<peach::fsm::SingleCharFinder>(
             std::vector<std::pair<char, tokenCategory_t>>{
@@ -51,29 +46,26 @@ int main()
                 {'\t', tokenCategory::SEP_TAB},
                 {'(', tokenCategory::BRACKET_OPEN},
                 {')', tokenCategory::BRACKET_CLOSE},
-                {':', tokenCategory::COLON},
-                {';', tokenCategory::SEMICOLON},
             }) //
         ;
 
-    auto text = "a = 2 - 3\n";
+    auto inputFile = std::ifstream("simple.pch");
+    std::string programText((std::istreambuf_iterator<char>(inputFile)),
+                            std::istreambuf_iterator<char>());
 
-    // "while (a != 0)\n"
-    // "    if (a == 3)\n"
-    // "        a = a - 2\n"
-    // "    else\n"
-    // "        a = a - 1\n"
-    // "a = 10\n";
+    // std::cout << programText << std::endl;
 
-    auto tokens = finder.tokenizeText(text, {
-                                                {"if", tokenCategory::COND_IF},
-                                                {"else", tokenCategory::COND_ELSE},
-                                                {"while", tokenCategory::LOOP_WHILE},
-                                            });
+    auto tokens = finder.tokenizeText(programText, {
+                                                       {"if", tokenCategory::COND_IF},
+                                                       {"else", tokenCategory::COND_ELSE},
+                                                       {"while", tokenCategory::LOOP_WHILE},
+                                                   });
 
-    for (auto &token : tokens)
+    for (const auto &tk : tokens)
     {
-        std::cout << "'" << token->getTokenString() << "'" << std::endl;
+        std::cout << "'" << tk->getTokenString() << "'" << ' ' << tk->getLine() << ' ' << tk->getPosition() << ' ';
+        peach::token::printCategory(tk->getCategory());
+        std::cout << std::endl;
     }
 
     auto interpreter = peach::interpreter::Interpreter(std::vector<tokenCategory_t>{
@@ -111,14 +103,27 @@ int main()
                                                                "-",
                                                                tokenCategory::OPERATOR_BI,
                                                            },
-                                                           peach::interpreter::AssignationInfo{"="},
+                                                           peach::interpreter::BinaryOperatorInfo{
+                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
+                                                                   return std::get<0>(args) == std::get<1>(args);
+                                                               },
+                                                               "==",
+                                                               tokenCategory::OPERATOR_BI,
+                                                           },
+                                                           peach::interpreter::BinaryOperatorInfo{
+                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
+                                                                   return std::get<0>(args) != std::get<1>(args);
+                                                               },
+                                                               "!=",
+                                                               tokenCategory::OPERATOR_BI,
+                                                           },
+                                                           peach::interpreter::AssignationInfo{":="},
                                                        });
 
-    interpreter.interpretateLine(tokens.begin(), tokens.end());
-    auto program = std::move(interpreter).getInterpretationResult();
+    interpreter.interpretateLines(tokens.begin(), tokens.end());
+    auto program = interpreter.getInterpretationResult();
     peach::expression::Scope scope;
     std::cout << program->eval(scope) << std::endl;
-    std::cout << scope["a"] << std::endl;
 
     return 0;
 }
