@@ -239,7 +239,7 @@ public:
         VType result{};
         while (loopCond_->eval(scope))
         {
-            result = loopCond_->eval(scope);
+            result = loopBody_->eval(scope);
         }
         return result;
     }
