@@ -34,7 +34,7 @@ public:
                     const std::string &exceptionClass,
                     const std::string &comment)
         : PeachException(exceptionClass,
-                         comment + " in " +
+                         comment + " at " +
                              std::to_string(line) +
                              ":" + std::to_string(position)),
           line_(line),
@@ -82,6 +82,30 @@ public:
     }
 };
 
+class UndefinedTokenError : public PositionalError
+{
+public:
+    UndefinedTokenError(std::size_t line,
+                        std::size_t position)
+        : PositionalError(line,
+                          position,
+                          "UndefinedTokenError", "can not recognize token")
+    {
+    }
+};
+
+class UnexpectedTokenError : public PositionalError
+{
+public:
+    UnexpectedTokenError(std::size_t line,
+                         std::size_t position)
+        : PositionalError(line,
+                          position,
+                          "UnexpectedTokenError", "token is not expected")
+    {
+    }
+};
+
 class UnexpectedElseError : public PositionalError
 {
 public:
@@ -102,6 +126,15 @@ public:
         : PositionalError(line,
                           position,
                           "UndefinedOperatorError", "can't find operator")
+    {
+    }
+};
+
+class InterruptionError : public PeachException
+{
+public:
+    InterruptionError()
+        : PeachException("InterruptionError", "interpretation unexpectedly finished")
     {
     }
 };
