@@ -53,9 +53,9 @@ public:
         : singleIndentationBlock_(std::move(singleIndentationBlock)),
           operators_(std::move(operatorsOrder))
     {
-        pushNewIndentation(std::make_shared<expression::ExpressionSequence>(), indentationBlockType::UNDEFINED);
+        reset();
         std::size_t curPrior = operators_.size() + 1;
-        for (const std::variant<UnaryOperatorInfo, BinaryOperatorInfo, AssignationInfo> &op : operators_)
+        for (const auto &op : operators_)
         {
             if (op.index() == 0) // UnaryOperator
             {
@@ -74,11 +74,11 @@ public:
                 auto curop = std::get<2>(op);
                 operatorPriority_[curop.tokenString] = curPrior;
             }
-
             curPrior--;
         }
     }
 
+    // Returns current indentation level
     std::size_t getIndentationLevel() const noexcept
     {
         return unfinishedExpressions_.size() - 1;
@@ -86,9 +86,25 @@ public:
 
     // Interpretates single line as Expression
     // Puts constructed expression to the corresponding place
+    // Space tokens from begin to end sould not contain SEP_ENDL tokens
     void interpretateLine(TokenIterator beginTokens,
                           TokenIterator endTokens)
     {
+        for (auto it = beginTokens; it < endTokens; ++it)
+        {
+            if (!(*it))
+            {
+                throw std::invalid_argument("can not interpretate nullptr token");
+            }
+            if (token::isEndline(*it))
+            {
+                throw std::invalid_argument("line can not contain endline token");
+            }
+            if ((*it)->getCategory() == token::tokenCategory::UNDEFINED)
+            {
+                exception::throwFromTokenIterator<exception::UndefinedTokenError>(it);
+            }
+        }
         if (unfinishedExpressions_.empty())
         {
             throw std::logic_error("unfinished expressions stack is empty");
@@ -137,9 +153,35 @@ public:
         }
     }
 
-    expression::ExprShPtr getInterpretationResult() &&
+    // Interpreatates all given tokens to Expressions
+    void interpretateLines(TokenIterator tokensBegin, TokenIterator tokensEnd)
     {
+        while (tokensBegin < tokensEnd)
+        {
+            auto curEnd = getNextEndlineTokenIt(tokensBegin, tokensEnd);
+            interpretateLine(tokensBegin, curEnd);
+            tokensBegin = curEnd + 1;
+        }
+    }
+
+    // Returns sequence of expressions built after interpretator construction or Interpreter::reset() call
+    expression::ExprShPtr getInterpretationResult()
+    {
+        while (getIndentationLevel() > 0)
+        {
+            popIndentation();
+        }
         return unfinishedExpressions_.top().sequence;
+    }
+
+    // Resets all built expressions
+    void reset()
+    {
+        while (!unfinishedExpressions_.empty())
+        {
+            unfinishedExpressions_.pop();
+        }
+        pushNewIndentation(std::make_shared<expression::ExpressionSequence>(), indentationBlockType::UNDEFINED);
     }
 
 private:
@@ -160,47 +202,69 @@ private:
         unfinishedExpressions_.emplace(std::move(newExpr));
     }
 
-    indentationBlockType getLineCategory(TokenIterator itBegin)
+    static indentationBlockType getLineCategory(TokenIterator itBegin)
     {
         static_assert(static_cast<int>(indentationBlockType::UNDEFINED) == 0);
         auto itCategory = (*itBegin)->getCategory();
         static std::unordered_map<token::tokenCategory_t, indentationBlockType> blockTypeByToken = {
             {token::tokenCategory::COND_IF, indentationBlockType::COND_IF},
             {token::tokenCategory::COND_ELSE, indentationBlockType::COND_ELSE},
+            {token::tokenCategory::LOOP_WHILE, indentationBlockType::LOOP_WHILE},
         };
         return blockTypeByToken[itCategory];
     }
 
     // Returns iterator on next non separation token
-    TokenIterator getNextNonSepTokenIt(TokenIterator begin, TokenIterator end)
+    static inline TokenIterator getNextNonSepTokenIt(TokenIterator begin, TokenIterator end)
     {
-        while (begin < end && token::isSeparator(*begin))
-        {
-            ++begin;
-        }
+        for (; begin < end && token::isSeparator(*begin); ++begin)
+            ;
+        return begin;
+    }
+
+    // Returns iterator on next endline token
+    static inline TokenIterator getNextEndlineTokenIt(TokenIterator begin, TokenIterator end)
+    {
+        for (; begin < end && !token::isEndline(*begin); ++begin)
+            ;
         return begin;
     }
 
     // Constructs expression from line
     expression::ExprShPtr buildExpression(TokenIterator begin, TokenIterator end)
     {
-        std::vector<std::pair<std::string, token::tokenCategory_t>> operators;
+        struct OperatorInfo
+        {
+            std::string string;
+            token::tokenCategory_t category;
+            TokenIterator position;
+        };
+        if (begin == end)
+        {
+            return std::make_shared<expression::VTypeValue>(0);
+        }
+        std::vector<OperatorInfo> operators;
         std::vector<expression::ExprShPtr> expressions;
         auto curIt = begin;
 
+        auto throwBadOperator = [&]() {
+            auto badIt = operators.empty() ? begin : operators.back().position;
+            exception::throwFromTokenIterator<exception::SyntaxError>(badIt);
+        };
+
         auto popUnaryOperator = [&]() {
             if (operators.empty() ||
-                operators.back().second != token::tokenCategory::OPERATOR_UN ||
+                operators.back().category != token::tokenCategory::OPERATOR_UN ||
                 expressions.empty())
             {
-                throw std::invalid_argument("can not pop unary operator");
+                throwBadOperator();
             }
             auto operatorExpression = std::make_shared<expression::UnaryOperator>();
-            if (!unaryOperatorFunction_[operators.back().first])
+            if (!unaryOperatorFunction_[operators.back().string])
             {
-                throw std::invalid_argument("can not find unary operator " + operators.back().first);
+                throw std::invalid_argument("can not find unary operator " + operators.back().string);
             }
-            operatorExpression->setFunction(unaryOperatorFunction_[operators.back().first]);
+            operatorExpression->setFunction(unaryOperatorFunction_[operators.back().string]);
             operatorExpression->setExpressions({expressions.back()});
             operators.pop_back();
             expressions.pop_back();
@@ -209,17 +273,17 @@ private:
 
         auto popBinaryOperator = [&]() {
             if (operators.empty() ||
-                operators.back().second != token::tokenCategory::OPERATOR_BI ||
+                operators.back().category != token::tokenCategory::OPERATOR_BI ||
                 expressions.size() < 2)
             {
-                throw std::invalid_argument("can not pop binary operator");
+                throwBadOperator();
             }
             auto operatorExpression = std::make_shared<expression::BinaryOperator>();
-            if (!binaryOperatorFunction_[operators.back().first])
+            if (!binaryOperatorFunction_[operators.back().string])
             {
-                throw std::invalid_argument("can not find binary operator " + operators.back().first);
+                throw std::invalid_argument("can not find binary operator " + operators.back().string);
             }
-            operatorExpression->setFunction(binaryOperatorFunction_[operators.back().first]);
+            operatorExpression->setFunction(binaryOperatorFunction_[operators.back().string]);
             auto firstExpr = expressions.back();
             expressions.pop_back();
             auto secondExpr = expressions.back();
@@ -231,10 +295,10 @@ private:
 
         auto popAssignment = [&]() {
             if (operators.empty() ||
-                operators.back().second != token::tokenCategory::ASSIGNMENT ||
+                operators.back().category != token::tokenCategory::ASSIGNMENT ||
                 expressions.size() < 2)
             {
-                throw std::invalid_argument("can not pop assignment operator");
+                throwBadOperator();
             }
             std::shared_ptr<expression::AssignExpression> assignExpr;
             std::shared_ptr<expression::Expression> rightExpr;
@@ -243,7 +307,7 @@ private:
             assignExpr = std::dynamic_pointer_cast<expression::AssignExpression>(expressions.back());
             if (!assignExpr)
             {
-                exception::throwFromTokenIterator<exception::SyntaxError>(begin);
+                exception::throwFromTokenIterator<exception::SyntaxError>(operators.back().position);
             }
             assignExpr->setExpression(rightExpr);
             expressions.pop_back();
@@ -254,27 +318,29 @@ private:
         auto popOperator = [&]() {
             if (operators.empty())
             {
-                throw std::invalid_argument("can not pop operator from stack");
+                throwBadOperator();
             }
-            if (operators.back().second == token::tokenCategory::OPERATOR_UN)
+            switch (operators.back().category)
             {
+            case token::tokenCategory::OPERATOR_UN:
                 popUnaryOperator();
-            }
-            else if (operators.back().second == token::tokenCategory::OPERATOR_BI)
-            {
+                break;
+            case token::tokenCategory::OPERATOR_BI:
                 popBinaryOperator();
-            }
-            else if (operators.back().second == token::tokenCategory::ASSIGNMENT)
-            {
+                break;
+            case token::tokenCategory::ASSIGNMENT:
                 popAssignment();
+                break;
+            default:
+                break;
             }
         };
 
-        auto pushOperator = [&](const std::pair<std::string, token::tokenCategory_t> &op) {
+        auto pushOperator = [&](const OperatorInfo &op) {
             if (!operators.empty())
             {
                 auto topOperator = operators.back();
-                while (!operators.empty() && getOperatorPriority(operators.back().first) > getOperatorPriority(op.first))
+                while (!operators.empty() && getOperatorPriority(operators.back().string) > getOperatorPriority(op.string))
                 {
                     popOperator();
                 }
@@ -285,13 +351,15 @@ private:
         for (; curIt < end; curIt = getNextNonSepTokenIt(curIt + 1, end))
         {
             auto &token = *curIt;
-            if (token->getCategory() == token::tokenCategory::VALUE_INT)
+
+            switch (token->getCategory())
             {
+            case token::tokenCategory::VALUE_INT:
                 expressions.push_back(std::make_shared<expression::VTypeValue>(std::stoi(token->getTokenString())));
-            }
-            else if (token->getCategory() == token::tokenCategory::NAME)
-            {
-                if (curIt + 1 != end && (*(getNextNonSepTokenIt(curIt + 1, end)))->getCategory() == token::tokenCategory::ASSIGNMENT)
+                break;
+
+            case token::tokenCategory::NAME:
+                if (curIt + 1 < end && (*(getNextNonSepTokenIt(curIt + 1, end)))->getCategory() == token::tokenCategory::ASSIGNMENT)
                 {
                     auto str = token->getTokenString();
                     expressions.push_back(std::make_shared<expression::AssignExpression>(token->getTokenString()));
@@ -300,19 +368,20 @@ private:
                 {
                     expressions.push_back(std::make_shared<expression::VariableAccess>(token->getTokenString()));
                 }
-            }
-            else if (token->getCategory() == token::tokenCategory::ASSIGNMENT)
-            {
-                pushOperator({token->getTokenString(), token->getCategory()});
-            }
-            else if (token->getCategory() == token::tokenCategory::OPERATOR_UN ||
-                     token->getCategory() == token::tokenCategory::OPERATOR_BI)
-            {
-                pushOperator({token->getTokenString(), token->getCategory()});
-            }
-            else
-            {
-                exception::throwFromTokenIterator<exception::SyntaxError>(curIt);
+                break;
+
+            case token::tokenCategory::ASSIGNMENT:
+                pushOperator({token->getTokenString(), token->getCategory(), curIt});
+                break;
+
+            case token::tokenCategory::OPERATOR_UN:
+            case token::tokenCategory::OPERATOR_BI:
+                pushOperator({token->getTokenString(), token->getCategory(), curIt});
+                break;
+
+            default:
+                exception::throwFromTokenIterator<exception::UnexpectedTokenError>(curIt);
+                break;
             }
             if (operators.empty())
             {
