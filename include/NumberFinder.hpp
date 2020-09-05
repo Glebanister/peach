@@ -91,9 +91,10 @@ private:
         {
             throw std::invalid_argument("nodeFrom is nullptr");
         }
-        return nodeFrom->addTransitionToNewNode<transition::MergeTransitions<
-            transition::SingleCharTransitionTemplate<'-'>,
-            transition::DigitCharTransition>>(token::tokenCategory::UNDEFINED);
+        auto node1 = nodeFrom->addTransitionToNewNode<transition::SingleCharTransitionTemplate<'-'>>(token::tokenCategory::UNDEFINED);
+        auto term = node1->addTransitionToNewNode<transition::DigitCharTransition>(token::tokenCategory::UNDEFINED);
+        nodeFrom->addTransition<transition::DigitCharTransition>(term);
+        return term;
     }
 };
 } // namespace fsm

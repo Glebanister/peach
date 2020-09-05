@@ -56,41 +56,69 @@ int main()
             }) //
         ;
 
-    auto text = "whi = 1 -4\n"
-                "whilel=4123123\n"
-                "i = 0\n"
-                "while (res != 0)\n"
-                "    i = i + 1\n"
-                "    res = res - 1\n"
-                "    if i % 2 == 0:\n"
-                "        res = res + a + b + i\n"
-                "    elif i % 2 == 1:\n"
-                "        res_2 = 0\n"
-                "    else:\n"
-                "        res = res + c - i\n"
-                "res += c\n";
+    auto text = "a = 2 - 3\n";
+
+    // "while (a != 0)\n"
+    // "    if (a == 3)\n"
+    // "        a = a - 2\n"
+    // "    else\n"
+    // "        a = a - 1\n"
+    // "a = 10\n";
 
     auto tokens = finder.tokenizeText(text, {
                                                 {"if", tokenCategory::COND_IF},
-                                                {"elif", tokenCategory::COND_ELIF},
                                                 {"else", tokenCategory::COND_ELSE},
                                                 {"while", tokenCategory::LOOP_WHILE},
                                             });
 
-    try
+    for (auto &token : tokens)
     {
-        auto [id, it] = peach::interpreter::Indentator::getIndentation(tokens.begin(), tokens.end(), {
-                                                                                                         tokenCategory::SEP_SPACE,
-                                                                                                         tokenCategory::SEP_SPACE,
-                                                                                                         tokenCategory::SEP_SPACE,
-                                                                                                         tokenCategory::SEP_SPACE,
-                                                                                                     });
-        std::cout << id << std::endl;
+        std::cout << "'" << token->getTokenString() << "'" << std::endl;
     }
-    catch (const peach::exception::IndentationException &e)
-    {
-        std::cerr << e.what() << '\n';
-    }
+
+    auto interpreter = peach::interpreter::Interpreter(std::vector<tokenCategory_t>{
+                                                           tokenCategory::SEP_SPACE,
+                                                           tokenCategory::SEP_SPACE,
+                                                           tokenCategory::SEP_SPACE,
+                                                           tokenCategory::SEP_SPACE,
+                                                       },
+                                                       std::vector<std::variant<peach::interpreter::UnaryOperatorInfo, peach::interpreter::BinaryOperatorInfo, peach::interpreter::AssignationInfo>>{
+                                                           peach::interpreter::BinaryOperatorInfo{
+                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
+                                                                   return std::get<0>(args) * std::get<1>(args);
+                                                               },
+                                                               "*",
+                                                               tokenCategory::OPERATOR_BI,
+                                                           },
+                                                           peach::interpreter::BinaryOperatorInfo{
+                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
+                                                                   return std::get<0>(args) / std::get<1>(args);
+                                                               },
+                                                               "/",
+                                                               tokenCategory::OPERATOR_BI,
+                                                           },
+                                                           peach::interpreter::BinaryOperatorInfo{
+                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
+                                                                   return std::get<0>(args) + std::get<1>(args);
+                                                               },
+                                                               "+",
+                                                               tokenCategory::OPERATOR_BI,
+                                                           },
+                                                           peach::interpreter::BinaryOperatorInfo{
+                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
+                                                                   return std::get<0>(args) - std::get<1>(args);
+                                                               },
+                                                               "-",
+                                                               tokenCategory::OPERATOR_BI,
+                                                           },
+                                                           peach::interpreter::AssignationInfo{"="},
+                                                       });
+
+    interpreter.interpretateLine(tokens.begin(), tokens.end());
+    auto program = std::move(interpreter).getInterpretationResult();
+    peach::expression::Scope scope;
+    std::cout << program->eval(scope) << std::endl;
+    std::cout << scope["a"] << std::endl;
 
     return 0;
 }
