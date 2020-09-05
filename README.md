@@ -2,16 +2,13 @@
 
 ## Status
 
-In development at this moment.
+In developing.
+Simple scripts work fine, but a lot of bugs still undiscovered
 
 ## What is it
 
-The main idea - create a lightweight scripting language with C++17, that can be
+Lightweight scripting language with C++17, that can be
 extended by user. All scripts can be evaluated in your program runtime.
-What means extandable? For example, it already has integer numbers, so when you type `var = 239`, in C++ it equals to `std::int32_t var = 239`.
-You may want to have 64 bit integer, so you are able to tell peach, that
-`var = 239ll` means `std::int_64_t var = 239ll`. Same with floating
-point numbers.
 
 ## Where can you use it
 
@@ -24,8 +21,7 @@ from text file, then draws graph based on this numbers. But numbers need to be p
 So you write peach script for processing each number, for example:
 
 ```c++
-extern data_unit
-return data_unit < 10 or data_unit > 100
+data_unit < 10 | data_unit > 100
 ```
 
 Now, when your application is already running, you are able to
@@ -33,11 +29,10 @@ change ***logic*** of number cut, in other words, in runtime you simply
 can change code to:
 
 ```c++
-extern data_unit
 good = 0
 for (i = 2; i < 10; ++i):
     good += data_unit % i == 0
-return good > 2
+good > 2
 ```
 
 This is just an example, it makes no sense.
@@ -49,14 +44,22 @@ Use peach interpreter to evaluate your scripts from console:
 ```python
 # main.pch
 
-for (i = 0; i < 2; i += 1):
-    print("Hello, World!")
+a := 4
+b := 11
+while a + b != 26
+    a := a + b
+a + b
 ```
 
 ```bash
 $ peach main.pch
-Hello, World!Hello, World!
+26
 ```
+
+### Using interpreter
+
+Peach interpretates line by line, it means you can use peach console
+as calculator, for example.
 
 ## Syntax example
 
@@ -65,14 +68,14 @@ Hello, World!Hello, World!
 ```python
 res = 4
 i = 0
-while (res != 0)
+while res != 0
     i = i + 1
     res = res - 1
-    if i % 2 == 0:
+    if i % 2 == 0
         res = res + a + b + i
-    elif i % 2 == 1:
+    elif i % 2 == 1
         res = 0
-    else:
+    else
         res = res + c - i
-res += c
+res = res + c
 ```
