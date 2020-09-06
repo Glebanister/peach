@@ -2,9 +2,9 @@ let a = 123
 let cnt_even = 0
 let cnt_odd = 0
 while (a != 0) & cnt_even < 10
-    if a % 2 == 0
-        cnt_even += 1
-    else
-        cnt_odd += 1
-    a -= 1
+	if a % 2 == 0
+		cnt_even += 1
+	else
+		cnt_odd += 1
+	a -= 1
 cnt_odd

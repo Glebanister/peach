@@ -259,47 +259,57 @@ public:
             ;
     }
 
-    // Main interface loop, activates cli
-    void loop()
+    // Executes program from istream
+    void executeProgram(std::ifstream &ifs, std::ostream &os)
     {
-        std::cout << "Peach" << std::endl;
-        while (true)
+        std::string programText((std::istreambuf_iterator<char>(ifs)),
+                                std::istreambuf_iterator<char>());
+        auto tokens = tokenizator_.tokenizeText(programText, keywords_);
+        try
         {
-            printPrefix();
+            interpreter_.interpretateLines(tokens.begin(), tokens.end());
+            os << interpreter_.getInterpretationResult()->eval(scope_) << std::endl;
+        }
+        catch (const std::exception &e)
+        {
+            os << e.what() << '\n';
+        }
+    }
+
+    // Main interface loop, activates cli
+    void loop(std::istream &is, std::ostream &os)
+    {
+        os << "Peach" << std::endl;
+        while (!is.eof())
+        {
+            if (interpreter_.getIndentationLevel() == 0)
+            {
+                os << ">>> ";
+            }
+            else
+            {
+                os << "... ";
+            }
             if (interpreter_.getIndentationLevel() == 0)
             {
                 interpreter_.reset();
             }
             tokenizator_.reset();
             std::string input;
-            std::getline(std::cin, input);
+            std::getline(is, input);
             auto tokens = tokenizator_.tokenizeText(input, keywords_);
             try
             {
                 interpreter_.interpretateLine(tokens.begin(), tokens.end());
                 if (interpreter_.getIndentationLevel() == 0 || tokens.empty())
                 {
-                    std::cout << interpreter_.getInterpretationResult()->eval(scope_) << std::endl;
+                    os << interpreter_.getInterpretationResult()->eval(scope_) << std::endl;
                 }
             }
             catch (const std::exception &e)
             {
-                std::cout << e.what() << '\n';
+                os << e.what() << '\n';
             }
-        }
-    }
-
-    void printPrefix()
-    {
-        if (interpreter_.getIndentationLevel() == 0)
-        {
-            std::cout << ">>> ";
-            std::cout.flush();
-        }
-        else
-        {
-            std::cout << "... ";
-            std::cout.flush();
         }
     }
 
