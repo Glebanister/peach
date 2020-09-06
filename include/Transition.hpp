@@ -8,13 +8,16 @@ namespace peach
 {
 namespace transition
 {
+// Transition for FiniteStateMachine
 class CharTransition
 {
 public:
+    // Returns if transition is active on recieved char
     virtual bool isActive(char) = 0;
     virtual ~CharTransition() = default;
 };
 
+// Always true transition
 class TrueTransition : public CharTransition
 {
 public:
@@ -24,6 +27,9 @@ public:
     }
 };
 
+// Merge of TransitionClasses
+// Active iff at least one of TransitionClasses is active
+// TransitionClasses must be heir of CharTransition
 template <typename... TransitionClasses> // TODO: sfinae for default-construction check
 class MergeTransitions : public CharTransition
 {
@@ -41,6 +47,7 @@ private:
     std::tuple<TransitionClasses...> subtransitions_;
 };
 
+// Transition that is active iff char is in range from begin to end including
 class RangeCharTransition : public CharTransition
 {
 public:
@@ -60,6 +67,7 @@ private:
     char end_;
 };
 
+// Transition that is active iff char is equiv
 class SingleCharTransition : public RangeCharTransition
 {
 public:
@@ -67,6 +75,7 @@ public:
         : RangeCharTransition(c, c) {}
 };
 
+// Transition that is active iff char is in charset
 class SetCharTransition : public CharTransition
 {
 public:
@@ -82,6 +91,7 @@ private:
     std::vector<char> charset_;
 };
 
+// Template for range transition
 template <char Begin, char End>
 class RangeCharTransitionTemplate : public RangeCharTransition
 {
@@ -90,6 +100,7 @@ public:
         : RangeCharTransition(Begin, End) {}
 };
 
+// Template for SingleCharTransition
 template <char C>
 class SingleCharTransitionTemplate : public RangeCharTransition
 {
@@ -98,6 +109,7 @@ public:
         : RangeCharTransition(C, C) {}
 };
 
+// Transition that is active iff Transition is not active
 template <class Transition> // TODO: put SFINAE here, requires 'bool Transition::isActive()'
 class TransitionNegation : public Transition
 {
@@ -108,14 +120,15 @@ public:
     }
 };
 
-using DigitCharTransition = RangeCharTransitionTemplate<'0', '9'>;
-using LowerLatinCharTransition = RangeCharTransitionTemplate<'a', 'z'>;
-using UpperLatinCharTransition = RangeCharTransitionTemplate<'A', 'Z'>;
-using LatinCharTransition = MergeTransitions<LowerLatinCharTransition, UpperLatinCharTransition>;
-using UnderscoreTransition = SingleCharTransitionTemplate<'_'>;
-using LatinUnderscoreTransition = MergeTransitions<LatinCharTransition, UnderscoreTransition>;
-using LatinUnderscoreDigitTransition = MergeTransitions<LatinUnderscoreTransition, DigitCharTransition>;
-using FalseTransition = TransitionNegation<TrueTransition>;
+// Following transitions are active iff:
+using DigitCharTransition = RangeCharTransitionTemplate<'0', '9'>;                                       // '0' - '9'
+using LowerLatinCharTransition = RangeCharTransitionTemplate<'a', 'z'>;                                  // 'a' - 'z'
+using UpperLatinCharTransition = RangeCharTransitionTemplate<'A', 'Z'>;                                  // 'A' - 'Z'
+using LatinCharTransition = MergeTransitions<LowerLatinCharTransition, UpperLatinCharTransition>;        // 'a' - 'z' | 'A' - 'Z'
+using UnderscoreTransition = SingleCharTransitionTemplate<'_'>;                                          // '_'
+using LatinUnderscoreTransition = MergeTransitions<LatinCharTransition, UnderscoreTransition>;           // 'a' - 'z' | 'A' - 'Z' | '_'
+using LatinUnderscoreDigitTransition = MergeTransitions<LatinUnderscoreTransition, DigitCharTransition>; // 'a' - 'z' | 'A' - 'Z' | '0' - '9'
+using FalseTransition = TransitionNegation<TrueTransition>;                                              // never
 
 } // namespace transition
 } // namespace peach

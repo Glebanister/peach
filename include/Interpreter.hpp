@@ -12,6 +12,7 @@ namespace peach
 {
 namespace interpreter
 {
+// Contains information about FunctionCall, such as binary or unary operator
 struct OperatorInfo
 {
     expression::FunctionCall::FunctionType functor;
@@ -19,6 +20,7 @@ struct OperatorInfo
     token::tokenCategory_t tokenCategory;
 };
 
+// Contains information about AssignExpression, such as simple assignation '=' or '+='
 struct AssignOperatorInfo
 {
     expression::AssignExpression::FunctionType functor;
@@ -38,6 +40,9 @@ private:
     };
 
 public:
+    // SingleIndentationBlock defines one block of indentation
+    // Operators order is important, it used in expression building
+    // Constructor resets interpreter state
     Interpreter(std::vector<token::tokenCategory_t> singleIndentationBlock,
                 std::vector<OperatorInfo> operatorsOrder,
                 std::vector<AssignOperatorInfo> assignOperatorsOrder)
@@ -198,6 +203,7 @@ public:
     }
 
 private:
+    // Pops indentation level: closes latest expression sequence
     void popIndentation()
     {
         auto expr = unfinishedExpressions_.top().expression;
@@ -206,6 +212,7 @@ private:
         unfinishedExpressions_.top().sequence->addExpression(expr);
     }
 
+    // Pushes expr of type as new indentation level
     void pushNewIndentation(expression::ExprShPtr expr, token::tokenCategory_t type)
     {
         UnfinishedExpression newExpr;
@@ -215,6 +222,7 @@ private:
         unfinishedExpressions_.emplace(std::move(newExpr));
     }
 
+    // Returns line category of TokenIterator
     static token::tokenCategory_t getLineCategory(TokenIterator itBegin)
     {
         return (*itBegin)->getCategory();
