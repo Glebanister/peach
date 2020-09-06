@@ -35,9 +35,10 @@ int main()
                 {"%", tokenCategory::OPERATOR_BI},
                 {"+", tokenCategory::OPERATOR_BI},
                 {"-", tokenCategory::OPERATOR_BI},
-                {":=", tokenCategory::ASSIGNMENT},
                 {"==", tokenCategory::OPERATOR_BI},
+                {"=", tokenCategory::ASSIGNMENT},
                 {"!=", tokenCategory::OPERATOR_BI},
+                {"!", tokenCategory::OPERATOR_UN},
                 {">", tokenCategory::OPERATOR_BI},
                 {"<", tokenCategory::OPERATOR_BI},
                 {">=", tokenCategory::OPERATOR_BI},
@@ -79,6 +80,13 @@ int main()
                                                            tokenCategory::SEP_SPACE,
                                                        },
                                                        std::vector<std::variant<peach::interpreter::UnaryOperatorInfo, peach::interpreter::BinaryOperatorInfo, peach::interpreter::AssignationInfo>>{
+                                                           peach::interpreter::UnaryOperatorInfo{
+                                                               [](std::tuple<peach::expression::VType> args) {
+                                                                   return !std::get<0>(args);
+                                                               },
+                                                               "!",
+                                                               tokenCategory::OPERATOR_UN,
+                                                           },
                                                            peach::interpreter::BinaryOperatorInfo{
                                                                [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
                                                                    return std::get<0>(args) * std::get<1>(args);
@@ -176,6 +184,7 @@ int main()
     interpreter.interpretateLines(tokens.begin(), tokens.end());
     auto program = interpreter.getInterpretationResult();
     peach::expression::Scope scope;
+    scope["var"] = 100;
     std::cout << program->eval(scope) << std::endl;
 
     return 0;

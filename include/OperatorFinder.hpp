@@ -41,7 +41,14 @@ public:
                     throw std::invalid_argument("character " + std::to_string(c) + " is not allowed in operators");
                 }
             }
-            curNode = curNode->addTransitionToNewNode<transition::SingleCharTransition>(token::tokenCategory::UNDEFINED, c);
+            if (curNode->getNextNode(c))
+            {
+                curNode = curNode->getNextNode(c);
+            }
+            else
+            {
+                curNode = curNode->addTransitionToNewNode<transition::SingleCharTransition>(token::tokenCategory::UNDEFINED, c);
+            }
         }
         curNode->addTransitionToNewNode<transition::TrueTransition>(category);
     }
