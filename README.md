@@ -1,6 +1,4 @@
-# peach
-
-![Logo](<https://www.vhv.rs/dpng/d/423-4234600_peach-emoji-with-crown-clipart-png-black-and.png>)
+# peach 🍑
 
 ## What is it
 
