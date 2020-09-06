@@ -324,7 +324,7 @@ public:
 class AssignExpression : public SingleIndentationLevelExpression
 {
 public:
-    using FunctionType = std::function<VType(VType, VType)>;
+    using FunctionType = std::function<void(VType &, VType)>;
 
     AssignExpression(
         ExprShPtr left,
@@ -350,10 +350,10 @@ public:
         {
             throw std::invalid_argument("AssignExpression does not have expression yet");
         }
-        auto rightEvalRes = right_->eval(scope);
-        auto res = functor_(scope[left_->getVariableName()], rightEvalRes);
-        scope[left_->getVariableName()] = res;
-        return res;
+        VType rightEvalRes = right_->eval(scope);
+        VType &leftVariable = scope[left_->getVariableName()];
+        functor_(leftVariable, rightEvalRes);
+        return leftVariable;
     }
 
 private:

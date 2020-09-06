@@ -19,7 +19,7 @@ public:
     // Separates indentation from tokens
     // Accepts first token of line, last code token and single indentation block structure
     // Returns pair of [number of indentation blocks; first token after indentation iterator]
-    // Ignores blank lines!
+    // Ignores blank lines
     // Indentation of each line must be able to be defined without context of other lines
     // Throws peach::exception::IndentationException in bad case
     static std::pair<std::size_t, TokenIterator> getIndentation(TokenIterator tokensBegin, // first line token

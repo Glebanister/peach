@@ -13,5 +13,10 @@ set(SOURCES
 
 add_executable(${EXE} ${SOURCES})
 target_include_directories(${EXE} PUBLIC include)
+target_include_directories(${EXE} PUBLIC include/Evaluation)
+target_include_directories(${EXE} PUBLIC include/Interpretation)
+target_include_directories(${EXE} PUBLIC include/Tokenization)
+target_include_directories(${EXE} PUBLIC include/Tokenization/Finders)
+target_include_directories(${EXE} PUBLIC include/Tools)
 set_property(TARGET ${EXE}
              PROPERTY CXX_STANDARD 17)
