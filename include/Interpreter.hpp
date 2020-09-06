@@ -117,6 +117,15 @@ public:
 
         while (lineIndentationLevel < getIndentationLevel())
         {
+            if (getIndentationLevel() - lineIndentationLevel == 1 &&
+                unfinishedExpressions_.top().type == indentationBlockType::COND_IF &&
+                lineCategory == indentationBlockType::COND_ELSE)
+            {
+                unfinishedExpressions_.top().expression->addExpressionFromNextIndentationLevel(unfinishedExpressions_.top().sequence);
+                unfinishedExpressions_.top().sequence = std::make_shared<expression::ExpressionSequence>();
+                ++lineIndentationLevel;
+                break;
+            }
             popIndentation();
         }
 
@@ -137,8 +146,6 @@ public:
             {
                 exception::throwFromTokenIterator<exception::UnexpectedElseError>(beginTokens);
             }
-            unfinishedExpressions_.top().expression->addExpressionFromNextIndentationLevel(unfinishedExpressions_.top().sequence);
-            unfinishedExpressions_.top().sequence = std::make_shared<expression::ExpressionSequence>();
         }
         else if (lineCategory == indentationBlockType::LOOP_WHILE)
         {

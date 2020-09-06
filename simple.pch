@@ -1,7 +1,4 @@
-a := 10
-while (a > 0)
-    a := a - 1
-if (a)
+if 0
     0
 else
     1
