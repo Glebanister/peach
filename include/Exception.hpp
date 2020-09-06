@@ -51,11 +51,17 @@ private:
 
 template <typename ExceptionT,
           typename = decltype(std::declval<ExceptionT>().getLine()),
-          typename = decltype(std::declval<ExceptionT>().getPosition())>
+          typename = decltype(std::declval<ExceptionT>().getPosition())> // TODO: sfinae!
 inline void throwFromTokenIterator(const std::vector<token::TokenPtr>::iterator &it)
 {
     throw ExceptionT((*it)->getLine(),
                      (*it)->getPosition());
+}
+
+template <typename ExceptionT> // TODO: sfinae!
+inline void throwFromCoords(std::size_t line, std::size_t pos)
+{
+    throw ExceptionT(line, pos);
 }
 
 class IndentationError : public PositionalError
@@ -78,6 +84,18 @@ public:
         : PositionalError(line,
                           position,
                           "SyntaxError", "invalid syntax")
+    {
+    }
+};
+
+class InvalidVariableDeclarationError : public PositionalError
+{
+public:
+    InvalidVariableDeclarationError(std::size_t line,
+                                    std::size_t position)
+        : PositionalError(line,
+                          position,
+                          "InvalidVariableDeclarationError", "name expected")
     {
     }
 };
@@ -138,6 +156,42 @@ public:
         : PositionalError(line,
                           position,
                           "BracketDisbalanceError", "can't match bracket")
+    {
+    }
+};
+
+class InvalidAssignationError : public PositionalError
+{
+public:
+    InvalidAssignationError(std::size_t line,
+                            std::size_t position)
+        : PositionalError(line,
+                          position,
+                          "InvalidAssignationError", "left expression must be variable access")
+    {
+    }
+};
+
+class UnknownVariable : public PositionalError
+{
+public:
+    UnknownVariable(std::size_t line,
+                    std::size_t position)
+        : PositionalError(line,
+                          position,
+                          "UnknownVariable", "variable is not visible")
+    {
+    }
+};
+
+class VariableRedeclaration : public PositionalError
+{
+public:
+    VariableRedeclaration(std::size_t line,
+                          std::size_t position)
+        : PositionalError(line,
+                          position,
+                          "VariableRedeclaration", "variable is declared already")
     {
     }
 };
