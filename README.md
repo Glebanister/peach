@@ -1,14 +1,25 @@
 # peach 🍑
 
-## Status
-
-In developing.
-Simple scripts work fine, but a lot of bugs still undiscovered
-
 ## What is it
 
 Lightweight scripting language with C++17, that can be
-extended by user. All scripts can be evaluated in your program runtime.
+extended by user. All scripts can be evajavascriptted in your program runtime.
+
+## Current features
+
+- Single variable type - `std::int32_t`
+
+- `if/else` conditions
+
+- `while` loops
+
+- Division into blocks with indentation
+
+- Variable declaration with `let` keyword
+
+- Arithmetical, logical operators and corresponding assignation operators (`a += 1` is simillar to `a = a + 1`)
+
+- Informative error messages
 
 ## Where can you use it
 
@@ -20,7 +31,8 @@ you have graphical application, that every tick reads some integer array
 from text file, then draws graph based on this numbers. But numbers need to be processed, for example, you don't want picture anomalies.
 So you write peach script for processing each number, for example:
 
-```c++
+```javascript
+let data_unit
 data_unit < 10 | data_unit > 100
 ```
 
@@ -28,10 +40,13 @@ Now, when your application is already running, you are able to
 change ***logic*** of number cut, in other words, in runtime you simply
 can change code to:
 
-```c++
-good = 0
-for (i = 2; i < 10; ++i):
+```javascript
+let data_unit
+let good = 0
+let i = 2
+while i < 10
     good += data_unit % i == 0
+    i += 1
 good > 2
 ```
 
@@ -41,41 +56,27 @@ This is just an example, it makes no sense.
 
 Use peach interpreter to evaluate your scripts from console:
 
-```python
+```javascript
 # main.pch
 
-a := 4
-b := 11
-while a + b != 26
-    a := a + b
-a + b
+let a = 123
+let cnt_even = 0
+let cnt_odd = 0
+while (a != 0) & cnt_even > 10
+    if a % 2 == 0
+        cnt_even += 1
+    else
+        cnt_odd += 1
+    a -= 1
+cnt_odd
 ```
 
 ```bash
 $ peach main.pch
-26
+10
 ```
 
 ### Using interpreter
 
 Peach interpretates line by line, it means you can use peach console
 as calculator, for example.
-
-## Syntax example
-
-***Warning***: work is not done yet, so isn't final version.
-
-```python
-res = 4
-i = 0
-while res != 0
-    i = i + 1
-    res = res - 1
-    if i % 2 == 0
-        res = res + a + b + i
-    elif i % 2 == 1
-        res = 0
-    else
-        res = res + c - i
-res = res + c
-```

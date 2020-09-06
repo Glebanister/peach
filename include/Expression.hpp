@@ -19,12 +19,12 @@ struct Logger
     template <typename... Args>
     static void log(Args &&... args)
     {
-        for (std::size_t i = 0; i < indentation; ++i)
-        {
-            std::cout << '\t';
-        }
-        (std::cout << ... << args);
-        std::cout.flush();
+        // for (std::size_t i = 0; i < indentation; ++i)
+        // {
+        //     std::cout << '\t';
+        // }
+        // (std::cout << ... << args);
+        // std::cout.flush();
     }
 
     static void pushIndentation()
