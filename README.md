@@ -1,4 +1,6 @@
-# peach 🍑
+# peach
+
+![Logo](<https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/socialmedia/apple/237/peach_1f351.png>=250x)
 
 ## What is it
 
