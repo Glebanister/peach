@@ -4,19 +4,22 @@ project(peach)
 add_compile_options(-Wall -Wextra -pedantic)
 
 set(EXE
-    peach    
+    peach
 )
 
 set(SOURCES
-    src/main.cpp
+    cli/src/Main.cpp
 )
 
 add_executable(${EXE} ${SOURCES})
-target_include_directories(${EXE} PUBLIC include)
-target_include_directories(${EXE} PUBLIC include/Evaluation)
-target_include_directories(${EXE} PUBLIC include/Interpretation)
-target_include_directories(${EXE} PUBLIC include/Tokenization)
-target_include_directories(${EXE} PUBLIC include/Tokenization/Finders)
-target_include_directories(${EXE} PUBLIC include/Tools)
+target_include_directories(${EXE} PRIVATE core/include)
+target_include_directories(${EXE} PRIVATE core/include/Evaluation)
+target_include_directories(${EXE} PRIVATE core/include/Interpretation)
+target_include_directories(${EXE} PRIVATE core/include/Tokenization)
+target_include_directories(${EXE} PRIVATE core/include/Tokenization/Finders)
+target_include_directories(${EXE} PRIVATE core/include/Tools)
+
+target_include_directories(${EXE} PRIVATE cli/include)
+
 set_property(TARGET ${EXE}
              PROPERTY CXX_STANDARD 17)

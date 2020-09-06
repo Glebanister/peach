@@ -38,6 +38,10 @@ public:
     std::vector<std::unique_ptr<token::Token>> tokenizeText(const std::string &text,
                                                             const std::vector<std::pair<std::string, token::tokenCategory_t>> &reservedKeywords)
     {
+        if (text.empty())
+        {
+            return {};
+        }
         std::vector<std::unique_ptr<token::Token>> tokens;
         auto processChar = [&](char c) {
             if (token::isEndline(c))
@@ -64,6 +68,15 @@ public:
             }
         }
         return tokens;
+    }
+
+    // Resets information about inputted text
+    void reset()
+    {
+        resetFsmId();
+        currentToken_ = "";
+        currentTokenBeginPos_ = 0;
+        currentTokenLine_ = 0;
     }
 
 private:
