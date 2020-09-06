@@ -98,7 +98,10 @@ struct tokenCategory
         // Token is semicolon ';'
         SEMICOLON = 18,
 
-        _TOKEN_TOTAL = 19;
+        // Token is variable declaration
+        DECLARATION = 19,
+
+        _TOKEN_TOTAL = 20;
 };
 
 inline void printCategory(tokenCategory_t category)
@@ -123,6 +126,7 @@ inline void printCategory(tokenCategory_t category)
         "VALUE_INT",
         "COLON",
         "SEMICOLON",
+        "DECLARATION",
     };
     std::cout << tokenCategoryString[static_cast<std::size_t>(category)];
 }
@@ -181,6 +185,11 @@ inline constexpr bool isSeparator(tokenCategory_t category) noexcept
 inline bool isSeparator(const TokenPtr &tk) noexcept
 {
     return isSeparator(tk->getCategory());
+}
+
+inline std::size_t getTokenOperatorArity(tokenCategory_t category)
+{
+    return category == tokenCategory::OPERATOR_UN ? 1 : 2;
 }
 
 } // namespace token

@@ -12,20 +12,11 @@ namespace peach
 {
 namespace interpreter
 {
-template <std::size_t Arity>
 struct OperatorInfo
 {
-    std::function<expression::VType(expression::details::TupleGenerator_t<expression::VType, Arity>)> functor;
+    expression::FunctionCall::FunctionType functor;
     std::string tokenString;
     token::tokenCategory_t tokenCategory;
-};
-
-using UnaryOperatorInfo = OperatorInfo<1>;
-using BinaryOperatorInfo = OperatorInfo<2>;
-
-struct AssignationInfo
-{
-    std::string tokenString;
 };
 
 // Interpretates tokens into evaluable Exresstions
@@ -38,6 +29,7 @@ private:
         LOOP_WHILE,
         COND_IF,
         COND_ELSE,
+        DECLARATION,
     };
 
     struct UnfinishedExpression
@@ -49,7 +41,8 @@ private:
 
 public:
     Interpreter(std::vector<token::tokenCategory_t> singleIndentationBlock,
-                std::vector<std::variant<UnaryOperatorInfo, BinaryOperatorInfo, AssignationInfo>> operatorsOrder)
+                std::vector<OperatorInfo> operatorsOrder,
+                std::string assignationPattern = "=")
         : singleIndentationBlock_(std::move(singleIndentationBlock)),
           operators_(std::move(operatorsOrder))
     {
@@ -57,25 +50,10 @@ public:
         std::size_t curPrior = operators_.size() + 1;
         for (const auto &op : operators_)
         {
-            if (op.index() == 0) // UnaryOperator
-            {
-                auto curop = std::get<0>(op);
-                operatorPriority_[curop.tokenString] = curPrior;
-                unaryOperatorFunction_[curop.tokenString] = curop.functor;
-            }
-            else if (op.index() == 1) // BinaryOperator
-            {
-                auto curop = std::get<1>(op);
-                operatorPriority_[curop.tokenString] = curPrior;
-                binaryOperatorFunction_[curop.tokenString] = curop.functor;
-            }
-            else // Assign
-            {
-                auto curop = std::get<2>(op);
-                operatorPriority_[curop.tokenString] = curPrior;
-            }
-            curPrior--;
+            operatorPriority_[op.tokenString] = curPrior--;
+            operatorFunction_[op.tokenString] = op.functor;
         }
+        operatorPriority_[assignationPattern] = 0;
     }
 
     // Returns current indentation level
@@ -113,6 +91,10 @@ public:
                                                                                         endTokens,
                                                                                         singleIndentationBlock_);
         beginTokens = firstNotIndentationIt;
+        if (beginTokens == endTokens)
+        {
+            return;
+        }
         auto lineCategory = getLineCategory(beginTokens);
 
         while (lineIndentationLevel < getIndentationLevel())
@@ -153,6 +135,19 @@ public:
                 buildExpression(
                     getNextNonSepTokenIt(beginTokens + 1, endTokens), endTokens));
             pushNewIndentation(newLoopExpression, lineCategory);
+        }
+        else if (lineCategory == indentationBlockType::DECLARATION)
+        {
+            auto nameIterator = getNextNonSepTokenIt(beginTokens + 1, endTokens);
+            if (!(*nameIterator) || (*nameIterator)->getCategory() != token::tokenCategory::NAME)
+            {
+                exception::throwFromTokenIterator<exception::InvalidVariableDeclarationError>(nameIterator);
+            }
+
+            expression::ExprShPtr declaration = std::make_shared<expression::VariableDeclaration>((*nameIterator)->getTokenString());
+            expression::ExprShPtr definition = buildExpression(nameIterator, endTokens);
+            unfinishedExpressions_.top().sequence->addExpression(std::move(declaration));
+            unfinishedExpressions_.top().sequence->addExpression(std::move(definition));
         }
         else
         {
@@ -217,6 +212,7 @@ private:
             {token::tokenCategory::COND_IF, indentationBlockType::COND_IF},
             {token::tokenCategory::COND_ELSE, indentationBlockType::COND_ELSE},
             {token::tokenCategory::LOOP_WHILE, indentationBlockType::LOOP_WHILE},
+            {token::tokenCategory::DECLARATION, indentationBlockType::DECLARATION},
         };
         return blockTypeByToken[itCategory];
     }
@@ -259,43 +255,21 @@ private:
             exception::throwFromTokenIterator<exception::SyntaxError>(badIt);
         };
 
-        auto popUnaryOperator = [&]() {
+        auto popArOperator = [&](std::size_t arity) {
             if (operators.empty() ||
-                operators.back().category != token::tokenCategory::OPERATOR_UN ||
-                expressions.empty())
+                expressions.size() < arity)
             {
                 throwBadOperator();
             }
-            auto operatorExpression = std::make_shared<expression::UnaryOperator>();
-            if (!unaryOperatorFunction_[operators.back().string])
+            auto operatorExpression = std::make_shared<expression::FunctionCall>();
+            if (!operatorFunction_[operators.back().string])
             {
-                throw std::invalid_argument("can not find unary operator " + operators.back().string);
+                throw std::invalid_argument("can not find operator " + operators.back().string);
             }
-            operatorExpression->setFunction(unaryOperatorFunction_[operators.back().string]);
-            operatorExpression->setExpressions({expressions.back()});
-            operators.pop_back();
-            expressions.pop_back();
-            expressions.emplace_back(std::move(operatorExpression));
-        };
-
-        auto popBinaryOperator = [&]() {
-            if (operators.empty() ||
-                operators.back().category != token::tokenCategory::OPERATOR_BI ||
-                expressions.size() < 2)
-            {
-                throwBadOperator();
-            }
-            auto operatorExpression = std::make_shared<expression::BinaryOperator>();
-            if (!binaryOperatorFunction_[operators.back().string])
-            {
-                throw std::invalid_argument("can not find binary operator " + operators.back().string);
-            }
-            operatorExpression->setFunction(binaryOperatorFunction_[operators.back().string]);
-            auto firstExpr = expressions.back();
-            expressions.pop_back();
-            auto secondExpr = expressions.back();
-            expressions.pop_back();
-            operatorExpression->setExpressions({secondExpr, firstExpr});
+            operatorExpression->setFunction(operatorFunction_[operators.back().string]);
+            std::vector<expression::ExprShPtr> argumentExpressions{expressions.end() - arity, expressions.end()};
+            expressions.resize(expressions.size() - arity);
+            operatorExpression->setExpressions(std::move(argumentExpressions));
             operators.pop_back();
             expressions.emplace_back(std::move(operatorExpression));
         };
@@ -307,17 +281,11 @@ private:
             {
                 throwBadOperator();
             }
-            std::shared_ptr<expression::AssignExpression> assignExpr;
-            std::shared_ptr<expression::Expression> rightExpr;
-            rightExpr = expressions.back();
+            auto rightExpr = expressions.back();
             expressions.pop_back();
-            assignExpr = std::dynamic_pointer_cast<expression::AssignExpression>(expressions.back());
-            if (!assignExpr)
-            {
-                exception::throwFromTokenIterator<exception::SyntaxError>(operators.back().position);
-            }
-            assignExpr->setExpression(rightExpr);
+            auto leftExpr = expressions.back();
             expressions.pop_back();
+            auto assignExpr = std::make_shared<expression::AssignExpression>(leftExpr, rightExpr);
             operators.pop_back();
             expressions.emplace_back(std::move(assignExpr));
         };
@@ -330,10 +298,8 @@ private:
             switch (operators.back().category)
             {
             case token::tokenCategory::OPERATOR_UN:
-                popUnaryOperator();
-                break;
             case token::tokenCategory::OPERATOR_BI:
-                popBinaryOperator();
+                popArOperator(token::getTokenOperatorArity(operators.back().category));
                 break;
             case token::tokenCategory::ASSIGNMENT:
                 popAssignment();
@@ -348,7 +314,8 @@ private:
         auto pushOperator = [&](const OperatorInfo &op) {
             if (!operators.empty())
             {
-                while (!operators.empty() && getOperatorPriority(operators.back().string) > getOperatorPriority(op.string))
+                while (!operators.empty() &&
+                       getOperatorPriority(operators.back().string) > getOperatorPriority(op.string))
                 {
                     popOperator();
                 }
@@ -367,15 +334,7 @@ private:
                 break;
 
             case token::tokenCategory::NAME:
-                if (curIt + 1 < end && (*(getNextNonSepTokenIt(curIt + 1, end)))->getCategory() == token::tokenCategory::ASSIGNMENT)
-                {
-                    auto str = token->getTokenString();
-                    expressions.push_back(std::make_shared<expression::AssignExpression>(token->getTokenString()));
-                }
-                else
-                {
-                    expressions.push_back(std::make_shared<expression::VariableAccess>(token->getTokenString()));
-                }
+                expressions.push_back(std::make_shared<expression::VariableAccess>(token->getTokenString()));
                 break;
 
             case token::tokenCategory::ASSIGNMENT:
@@ -429,7 +388,8 @@ private:
         {
             return 0;
         }
-        if (!operatorPriority_[op])
+
+        if (operatorPriority_.find(op) == operatorPriority_.end())
         {
             throw std::invalid_argument("undefined operator " + op);
         }
@@ -438,10 +398,9 @@ private:
 
     std::vector<token::tokenCategory_t> singleIndentationBlock_;
     std::stack<UnfinishedExpression> unfinishedExpressions_;
-    std::vector<std::variant<UnaryOperatorInfo, BinaryOperatorInfo, AssignationInfo>> operators_;
+    std::vector<OperatorInfo> operators_;
     std::unordered_map<std::string, int> operatorPriority_;
-    std::unordered_map<std::string, std::function<expression::VType(std::tuple<expression::VType>)>> unaryOperatorFunction_;
-    std::unordered_map<std::string, std::function<expression::VType(std::tuple<expression::VType, expression::VType>)>> binaryOperatorFunction_;
+    std::unordered_map<std::string, expression::FunctionCall::FunctionType> operatorFunction_;
 }; // namespace interpreter
 } // namespace interpreter
 } // namespace peach

@@ -1,5 +1,10 @@
-if !(2 + 2 == 4)
-    a = 0
-else
-    a = 1
-a
+let a = 123
+let cnt_even = 0
+let cnt_odd = 0
+while a != 0
+    if a % 2 == 0
+        cnt_even = cnt_even + 1
+    else
+        cnt_odd = cnt_odd + 1
+    a = a - 1
+cnt_odd

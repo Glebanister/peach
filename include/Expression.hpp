@@ -9,6 +9,7 @@
 #include <type_traits>
 #include <unordered_map>
 
+#include "Exception.hpp"
 #include "Token.hpp"
 
 namespace peach
@@ -16,10 +17,35 @@ namespace peach
 namespace expression
 {
 // Variables type
-using VType = std::int32_t; // TODO: wtf is this #1
+using VType = std::int32_t; // TODO: literals at least
 
 // Scope is the current state of visible variables
-using Scope = std::unordered_map<std::string, VType>; // TODO: wtf is this #2
+class Scope
+{
+public:
+    VType &operator[](const std::string &varName)
+    {
+        auto it = memory_.find(varName);
+        if (it == memory_.end())
+        {
+            exception::throwFromCoords<exception::UnknownVariable>(0, 0);
+        }
+        return it->second;
+    }
+
+    VType &declare(const std::string &varName, const VType &value = VType{})
+    {
+        return memory_[varName] = value;
+    }
+
+    bool hasName(const std::string &varName) const
+    {
+        return memory_.find(varName) != memory_.end();
+    }
+
+private:
+    std::unordered_map<std::string, VType> memory_;
+};
 
 class Expression;
 
@@ -90,15 +116,15 @@ inline void checkOptionalNotEmptyOrThrow(const std::optional<T> &x,
 }
 } // namespace details
 
-template <std::size_t Arity>
+using PeachTuple = std::vector<VType>;
+
 class FunctionCall : public SingleIndentationLevelExpression
 {
 public:
-    using FunctionType = std::function<VType(details::TupleGenerator_t<VType, Arity>)>;
-    constexpr static std::size_t arity = Arity;
+    using FunctionType = std::function<VType(PeachTuple)>;
 
-    void setExpressions(const std::array<ExprShPtr, Arity> &expressions) { expressions_.emplace(expressions); }
-    void setExpressions(std::array<ExprShPtr, Arity> &&expressions) { expressions_.emplace(std::move(expressions)); }
+    void setExpressions(const std::vector<ExprShPtr> &expressions) { expressions_.emplace(expressions); }
+    void setExpressions(std::vector<ExprShPtr> &&expressions) { expressions_.emplace(std::move(expressions)); }
 
     void setFunction(const FunctionType &f) { f_.emplace(f); }
     void setFunction(FunctionType &&f) { f_.emplace(std::move(f)); }
@@ -107,25 +133,20 @@ public:
     {
         details::checkOptionalNotEmptyOrThrow(expressions_, "expression is not set yet");
         details::checkOptionalNotEmptyOrThrow(f_, "function is not set yet");
-        details::TupleGenerator_t<VType, Arity> callArgs;
-        std::size_t argumentId = 0;
-        auto processSingleArgument = [&](VType &argument) {
-            argument = expressions_.value()[argumentId++]->eval(scope);
-        };
-        std::apply([&](auto &&... args) {
-            (processSingleArgument(args), ...);
-        },
-                   callArgs);
+
+        PeachTuple callArgs;
+
+        for (std::size_t argId = 0; argId < expressions_.value().size(); ++argId)
+        {
+            callArgs.emplace_back(expressions_.value()[argId]->eval(scope));
+        }
         return f_.value()(callArgs);
     }
 
 private:
-    std::optional<std::array<ExprShPtr, Arity>> expressions_;
+    std::optional<std::vector<ExprShPtr>> expressions_;
     std::optional<FunctionType> f_;
 };
-
-using UnaryOperator = FunctionCall<1>;
-using BinaryOperator = FunctionCall<2>;
 
 class VTypeValue : public SingleIndentationLevelExpression
 {
@@ -249,41 +270,93 @@ private:
     ExprShPtr loopBody_;
 };
 
-class AssignExpression : public SingleIndentationLevelExpression
+class LvalueExpression : public SingleIndentationLevelExpression
 {
 public:
-    AssignExpression(const std::string &name)
+    LvalueExpression(const std::string &name)
         : varName_(name) {}
 
-    void setExpression(ExprShPtr expr) { expr_ = std::move(expr); }
-
-    VType eval(Scope &scope) override
+    std::string getVariableName() const noexcept
     {
-        if (!expr_)
-        {
-            throw std::invalid_argument("AssignExpression does not have expression yet");
-        }
-        return scope[varName_] = expr_->eval(scope); // TODO: invisibility .........
+        return varName_;
     }
 
-private:
+protected:
     std::string varName_;
-    ExprShPtr expr_;
 };
 
-class VariableAccess : public SingleIndentationLevelExpression
+class VariableAccess : public LvalueExpression
 {
 public:
     VariableAccess(const std::string &name)
-        : varName_(name) {}
+        : LvalueExpression(name) {}
 
     VType eval(Scope &scope) override
     {
-        return scope[varName_]; // TODO: undefined variable....
+        if (!scope.hasName(varName_))
+        {
+            exception::throwFromCoords<exception::UnknownVariable>(111, 222); // Expression must know its position
+        }
+        return scope[varName_];
+    }
+};
+
+class VariableDeclaration : public LvalueExpression
+{
+public:
+    VariableDeclaration(const std::string &name)
+        : LvalueExpression(name) {}
+
+    VType eval(Scope &scope) override
+    {
+        if (scope.hasName(varName_))
+        {
+            exception::throwFromCoords<exception::VariableRedeclaration>(0, 0); // Expression must know its position
+        }
+        return scope.declare(varName_);
+    }
+};
+
+class AssignExpression : public SingleIndentationLevelExpression
+{
+public:
+    AssignExpression(ExprShPtr left = nullptr,
+                     ExprShPtr right = nullptr)
+    {
+        setLeftExpression(left);
+        setRightExpression(right);
+    }
+
+    void setLeftExpression(ExprShPtr expr)
+    {
+        if (!expr)
+        {
+            return;
+        }
+        left_ = std::dynamic_pointer_cast<LvalueExpression>(expr);
+        if (!left_)
+        {
+            exception::throwFromCoords<exception::InvalidAssignationError>(0, 0); // TODO: expression must know its position
+        }
+    }
+
+    void setRightExpression(ExprShPtr expr)
+    {
+        right_ = std::move(expr);
+    }
+
+    VType eval(Scope &scope) override
+    {
+        if (!left_ || !right_)
+        {
+            throw std::invalid_argument("AssignExpression does not have expression yet");
+        }
+        return scope[left_->getVariableName()] = right_->eval(scope); // TODO: variable invisibility
     }
 
 private:
-    std::string varName_;
-};
+    std::shared_ptr<LvalueExpression> left_;
+    ExprShPtr right_;
+}; // namespace expression
 } // namespace expression
 } // namespace peach

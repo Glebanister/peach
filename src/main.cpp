@@ -48,7 +48,6 @@ int main()
             std::vector<std::pair<char, tokenCategory_t>>{
                 {'\n', tokenCategory::SEP_ENDL},
                 {' ', tokenCategory::SEP_SPACE},
-                {'\t', tokenCategory::SEP_TAB},
                 {'(', tokenCategory::BRACKET_OPEN},
                 {')', tokenCategory::BRACKET_CLOSE},
             }) //
@@ -64,6 +63,7 @@ int main()
                                                        {"if", tokenCategory::COND_IF},
                                                        {"else", tokenCategory::COND_ELSE},
                                                        {"while", tokenCategory::LOOP_WHILE},
+                                                       {"let", tokenCategory::DECLARATION},
                                                    });
 
     for (const auto &tk : tokens)
@@ -79,112 +79,110 @@ int main()
                                                            tokenCategory::SEP_SPACE,
                                                            tokenCategory::SEP_SPACE,
                                                        },
-                                                       std::vector<std::variant<peach::interpreter::UnaryOperatorInfo, peach::interpreter::BinaryOperatorInfo, peach::interpreter::AssignationInfo>>{
-                                                           peach::interpreter::UnaryOperatorInfo{
-                                                               [](std::tuple<peach::expression::VType> args) {
-                                                                   return !std::get<0>(args);
+                                                       std::vector<peach::interpreter::OperatorInfo>{
+                                                           {
+                                                               [](peach::expression::PeachTuple args) {
+                                                                   return !args[0];
                                                                },
                                                                "!",
                                                                tokenCategory::OPERATOR_UN,
                                                            },
-                                                           peach::interpreter::BinaryOperatorInfo{
-                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
-                                                                   return std::get<0>(args) * std::get<1>(args);
+                                                           {
+                                                               [](peach::expression::PeachTuple args) {
+                                                                   return args[0] * args[1];
                                                                },
                                                                "*",
                                                                tokenCategory::OPERATOR_BI,
                                                            },
-                                                           peach::interpreter::BinaryOperatorInfo{
-                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
-                                                                   return std::get<0>(args) / std::get<1>(args);
+                                                           {
+                                                               [](peach::expression::PeachTuple args) {
+                                                                   return args[0] / args[1];
                                                                },
                                                                "/",
                                                                tokenCategory::OPERATOR_BI,
                                                            },
-                                                           peach::interpreter::BinaryOperatorInfo{
-                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
-                                                                   return std::get<0>(args) % std::get<1>(args);
+                                                           {
+                                                               [](peach::expression::PeachTuple args) {
+                                                                   return args[0] % args[1];
                                                                },
                                                                "%",
                                                                tokenCategory::OPERATOR_BI,
                                                            },
-                                                           peach::interpreter::BinaryOperatorInfo{
-                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
-                                                                   return std::get<0>(args) + std::get<1>(args);
+                                                           {
+                                                               [](peach::expression::PeachTuple args) {
+                                                                   return args[0] + args[1];
                                                                },
                                                                "+",
                                                                tokenCategory::OPERATOR_BI,
                                                            },
-                                                           peach::interpreter::BinaryOperatorInfo{
-                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
-                                                                   return std::get<0>(args) - std::get<1>(args);
+                                                           {
+                                                               [](peach::expression::PeachTuple args) {
+                                                                   return args[0] - args[1];
                                                                },
                                                                "-",
                                                                tokenCategory::OPERATOR_BI,
                                                            },
-                                                           peach::interpreter::BinaryOperatorInfo{
-                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
-                                                                   return std::get<0>(args) == std::get<1>(args);
+                                                           {
+                                                               [](peach::expression::PeachTuple args) {
+                                                                   return args[0] == args[1];
                                                                },
                                                                "==",
                                                                tokenCategory::OPERATOR_BI,
                                                            },
-                                                           peach::interpreter::BinaryOperatorInfo{
-                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
-                                                                   return std::get<0>(args) != std::get<1>(args);
+                                                           {
+                                                               [](peach::expression::PeachTuple args) {
+                                                                   return args[0] != args[1];
                                                                },
                                                                "!=",
                                                                tokenCategory::OPERATOR_BI,
                                                            },
-                                                           peach::interpreter::BinaryOperatorInfo{
-                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
-                                                                   return std::get<0>(args) > std::get<1>(args);
+                                                           {
+                                                               [](peach::expression::PeachTuple args) {
+                                                                   return args[0] > args[1];
                                                                },
                                                                ">",
                                                                tokenCategory::OPERATOR_BI,
                                                            },
-                                                           peach::interpreter::BinaryOperatorInfo{
-                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
-                                                                   return std::get<0>(args) >= std::get<1>(args);
+                                                           {
+                                                               [](peach::expression::PeachTuple args) {
+                                                                   return args[0] >= args[1];
                                                                },
                                                                ">=",
                                                                tokenCategory::OPERATOR_BI,
                                                            },
-                                                           peach::interpreter::BinaryOperatorInfo{
-                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
-                                                                   return std::get<0>(args) < std::get<1>(args);
+                                                           {
+                                                               [](peach::expression::PeachTuple args) {
+                                                                   return args[0] < args[1];
                                                                },
                                                                "<",
                                                                tokenCategory::OPERATOR_BI,
                                                            },
-                                                           peach::interpreter::BinaryOperatorInfo{
-                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
-                                                                   return std::get<0>(args) <= std::get<1>(args);
+                                                           {
+                                                               [](peach::expression::PeachTuple args) {
+                                                                   return args[0] <= args[1];
                                                                },
                                                                "<=",
                                                                tokenCategory::OPERATOR_BI,
                                                            },
-                                                           peach::interpreter::BinaryOperatorInfo{
-                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
-                                                                   return std::get<0>(args) || std::get<1>(args);
+                                                           {
+                                                               [](peach::expression::PeachTuple args) {
+                                                                   return args[0] || args[1];
                                                                },
                                                                "|",
                                                                tokenCategory::OPERATOR_BI,
                                                            },
-                                                           peach::interpreter::BinaryOperatorInfo{
-                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
-                                                                   return std::get<0>(args) && std::get<1>(args);
+                                                           {
+                                                               [](peach::expression::PeachTuple args) {
+                                                                   return args[0] && args[1];
                                                                },
                                                                "&",
                                                                tokenCategory::OPERATOR_BI,
                                                            },
-                                                           peach::interpreter::AssignationInfo{":="},
                                                        });
 
     interpreter.interpretateLines(tokens.begin(), tokens.end());
     auto program = interpreter.getInterpretationResult();
     peach::expression::Scope scope;
-    scope["var"] = 100;
     std::cout << program->eval(scope) << std::endl;
 
     return 0;
