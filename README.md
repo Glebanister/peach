@@ -1,7 +1,7 @@
 # peach 🍑
 
-Peach is lightweight dependency-free scripting language with C++17, that can be
-extended by user. All scripts can be evaluated in your C++ program runtime.
+Lightweight dependency-free scripting language with C++17, that can be
+extended by user. All scripts can be evaluated in your program runtime.
 
 ## Current features
 
