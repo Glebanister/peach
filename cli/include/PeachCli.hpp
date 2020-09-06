@@ -234,6 +234,7 @@ public:
     // Main interface loop, activates cli
     void loop()
     {
+        std::cout << "Peach" << std::endl;
         while (true)
         {
             printPrefix();

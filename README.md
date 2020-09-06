@@ -21,6 +21,39 @@ extended by user. All scripts can be evaluated in your program runtime.
 
 - Informative error messages
 
+## How to use
+
+### Building
+
+- Make sure following commands works fine on your machine:
+
+```bash
+git --version
+cmake --version
+clang-10 --version
+```
+
+- Build project by typing in your command line:
+
+```bash
+mkdir build && cd build
+cmake ..
+```
+
+- Executable file can be found in `/build/peach` if build was successfull
+
+### Using with command line interface
+
+- Simply run `/build/peach`, you will get:
+
+```bash
+gleb@ZenBook:~/Documents/projects/peach$ ./build/peach 
+Peach
+>>>
+```
+
+- And you're good to go
+
 ## Where can you use it
 
 ### Binding with your C++ code
