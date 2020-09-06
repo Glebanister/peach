@@ -204,5 +204,14 @@ public:
     {
     }
 };
+
+class ZeroDivisionError : public PeachException
+{
+public:
+    ZeroDivisionError()
+        : PeachException("ZeroDivisionError", "can't divide by zero")
+    {
+    }
+};
 } // namespace exception
 } // namespace peach

@@ -32,6 +32,29 @@ public:
                            },
                            {
                                [](peach::expression::PeachTuple args) {
+                                   expression::VType res = 1;
+                                   expression::VType deg = args[1];
+                                   expression::VType x = args[0];
+                                   while (deg)
+                                   {
+                                       if (!(deg & 1))
+                                       {
+                                           x *= x;
+                                           deg >>= 1;
+                                       }
+                                       else
+                                       {
+                                           res *= x;
+                                           --deg;
+                                       }
+                                   }
+                                   return res;
+                               },
+                               "**",
+                               token::tokenCategory::OPERATOR_BI,
+                           },
+                           {
+                               [](peach::expression::PeachTuple args) {
                                    return args[0] * args[1];
                                },
                                "*",
@@ -39,6 +62,10 @@ public:
                            },
                            {
                                [](peach::expression::PeachTuple args) {
+                                   if (args[1] == 0)
+                                   {
+                                       throw exception::ZeroDivisionError();
+                                   }
                                    return args[0] / args[1];
                                },
                                "/",
@@ -202,6 +229,7 @@ public:
                     {"|=", tokenCategory::ASSIGNMENT},
                     {"|", tokenCategory::OPERATOR_BI},
                     {"*=", tokenCategory::ASSIGNMENT},
+                    {"**", tokenCategory::OPERATOR_BI},
                     {"*", tokenCategory::OPERATOR_BI},
                     {"/=", tokenCategory::ASSIGNMENT},
                     {"/", tokenCategory::OPERATOR_BI},
