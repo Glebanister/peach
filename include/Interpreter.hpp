@@ -331,15 +331,16 @@ private:
             case token::tokenCategory::ASSIGNMENT:
                 popAssignment();
                 break;
+            case token::tokenCategory::BRACKET_OPEN:
+                exception::throwFromTokenIterator<exception::BracketDisbalanceError>(operators.back().position);
             default:
-                break;
+                exception::throwFromTokenIterator<exception::UndefinedOperatorError>(operators.back().position);
             }
         };
 
         auto pushOperator = [&](const OperatorInfo &op) {
             if (!operators.empty())
             {
-                auto topOperator = operators.back();
                 while (!operators.empty() && getOperatorPriority(operators.back().string) > getOperatorPriority(op.string))
                 {
                     popOperator();
@@ -371,12 +372,25 @@ private:
                 break;
 
             case token::tokenCategory::ASSIGNMENT:
-                pushOperator({token->getTokenString(), token->getCategory(), curIt});
-                break;
-
             case token::tokenCategory::OPERATOR_UN:
             case token::tokenCategory::OPERATOR_BI:
                 pushOperator({token->getTokenString(), token->getCategory(), curIt});
+                break;
+
+            case token::tokenCategory::BRACKET_OPEN:
+                operators.push_back({token->getTokenString(), token->getCategory(), curIt});
+                break;
+
+            case token::tokenCategory::BRACKET_CLOSE:
+                while (!operators.empty() && operators.back().category != token::tokenCategory::BRACKET_OPEN)
+                {
+                    popOperator();
+                }
+                if (operators.empty())
+                {
+                    exception::throwFromTokenIterator<exception::BracketDisbalanceError>(curIt);
+                }
+                operators.pop_back();
                 break;
 
             default:
@@ -404,6 +418,10 @@ private:
 
     int getOperatorPriority(const std::string &op)
     {
+        if (op == "(")
+        {
+            return 0;
+        }
         if (!operatorPriority_[op])
         {
             throw std::invalid_argument("undefined operator " + op);

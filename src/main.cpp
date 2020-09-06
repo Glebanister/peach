@@ -32,12 +32,16 @@ int main()
                 {"|", tokenCategory::OPERATOR_BI},
                 {"*", tokenCategory::OPERATOR_BI},
                 {"/", tokenCategory::OPERATOR_BI},
+                {"%", tokenCategory::OPERATOR_BI},
                 {"+", tokenCategory::OPERATOR_BI},
                 {"-", tokenCategory::OPERATOR_BI},
                 {":=", tokenCategory::ASSIGNMENT},
                 {"==", tokenCategory::OPERATOR_BI},
                 {"!=", tokenCategory::OPERATOR_BI},
-                {"!", tokenCategory::OPERATOR_UN},
+                {">", tokenCategory::OPERATOR_BI},
+                {"<", tokenCategory::OPERATOR_BI},
+                {">=", tokenCategory::OPERATOR_BI},
+                {"<=", tokenCategory::OPERATOR_BI},
             }) //
         .buildAppendFsm<peach::fsm::SingleCharFinder>(
             std::vector<std::pair<char, tokenCategory_t>>{
@@ -91,6 +95,13 @@ int main()
                                                            },
                                                            peach::interpreter::BinaryOperatorInfo{
                                                                [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
+                                                                   return std::get<0>(args) % std::get<1>(args);
+                                                               },
+                                                               "%",
+                                                               tokenCategory::OPERATOR_BI,
+                                                           },
+                                                           peach::interpreter::BinaryOperatorInfo{
+                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
                                                                    return std::get<0>(args) + std::get<1>(args);
                                                                },
                                                                "+",
@@ -115,6 +126,48 @@ int main()
                                                                    return std::get<0>(args) != std::get<1>(args);
                                                                },
                                                                "!=",
+                                                               tokenCategory::OPERATOR_BI,
+                                                           },
+                                                           peach::interpreter::BinaryOperatorInfo{
+                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
+                                                                   return std::get<0>(args) > std::get<1>(args);
+                                                               },
+                                                               ">",
+                                                               tokenCategory::OPERATOR_BI,
+                                                           },
+                                                           peach::interpreter::BinaryOperatorInfo{
+                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
+                                                                   return std::get<0>(args) >= std::get<1>(args);
+                                                               },
+                                                               ">=",
+                                                               tokenCategory::OPERATOR_BI,
+                                                           },
+                                                           peach::interpreter::BinaryOperatorInfo{
+                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
+                                                                   return std::get<0>(args) < std::get<1>(args);
+                                                               },
+                                                               "<",
+                                                               tokenCategory::OPERATOR_BI,
+                                                           },
+                                                           peach::interpreter::BinaryOperatorInfo{
+                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
+                                                                   return std::get<0>(args) <= std::get<1>(args);
+                                                               },
+                                                               "<=",
+                                                               tokenCategory::OPERATOR_BI,
+                                                           },
+                                                           peach::interpreter::BinaryOperatorInfo{
+                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
+                                                                   return std::get<0>(args) || std::get<1>(args);
+                                                               },
+                                                               "|",
+                                                               tokenCategory::OPERATOR_BI,
+                                                           },
+                                                           peach::interpreter::BinaryOperatorInfo{
+                                                               [](std::tuple<peach::expression::VType, peach::expression::VType> args) {
+                                                                   return std::get<0>(args) && std::get<1>(args);
+                                                               },
+                                                               "&",
                                                                tokenCategory::OPERATOR_BI,
                                                            },
                                                            peach::interpreter::AssignationInfo{":="},

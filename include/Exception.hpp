@@ -130,6 +130,18 @@ public:
     }
 };
 
+class BracketDisbalanceError : public PositionalError
+{
+public:
+    BracketDisbalanceError(std::size_t line,
+                           std::size_t position)
+        : PositionalError(line,
+                          position,
+                          "BracketDisbalanceError", "can't match bracket")
+    {
+    }
+};
+
 class InterruptionError : public PeachException
 {
 public:
