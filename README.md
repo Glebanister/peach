@@ -1,6 +1,6 @@
 # peach
 
-![Logo](<https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/socialmedia/apple/237/peach_1f351.png> =250x)
+![Logo](<https://www.vhv.rs/dpng/d/423-4234600_peach-emoji-with-crown-clipart-png-black-and.png>)
 
 ## What is it
 
