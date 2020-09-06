@@ -1,7 +1,5 @@
 # peach 🍑
 
-## What is it
-
 Lightweight dependency-free scripting language with C++17, that can be
 extended by user. All scripts can be evaluated in your program runtime.
 
