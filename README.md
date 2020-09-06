@@ -7,6 +7,10 @@ extended by user. All scripts can be evaluated in your program runtime.
 
 ## Current features
 
+- Command line interpreter
+
+- File interpreter
+
 - Single variable type - `std::int32_t`
 
 - `if/else` conditions
@@ -53,6 +57,22 @@ Peach
 ```
 
 - And you're good to go
+
+### Write script
+
+- Simply run `/build/peach <filename>`, where `<filename>` contains program code, for example, if this is `hello.pch`
+
+```javascript
+let a = 10
+a += 1
+```
+
+Then you program evaluation will look like:
+
+```bash
+gleb@ZenBook:~/Documents/projects/peach$ ./build/peach simple.pch
+11
+```
 
 ## Where can you use it
 
