@@ -70,7 +70,7 @@ a += 1
 Then you program evaluation will look like:
 
 ```bash
-gleb@ZenBook:~/Documents/projects/peach$ ./build/peach simple.pch
+gleb@ZenBook:~/Documents/projects/peach$ ./build/peach hello.pch
 11
 ```
 
