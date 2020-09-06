@@ -19,41 +19,42 @@ struct OperatorInfo
     token::tokenCategory_t tokenCategory;
 };
 
+struct AssignOperatorInfo
+{
+    expression::AssignExpression::FunctionType functor;
+    std::string tokenString;
+    token::tokenCategory_t tokenCategory;
+};
+
 // Interpretates tokens into evaluable Exresstions
 class Interpreter
 {
 private:
-    enum class indentationBlockType
-    {
-        UNDEFINED,
-        LOOP_WHILE,
-        COND_IF,
-        COND_ELSE,
-        DECLARATION,
-    };
-
     struct UnfinishedExpression
     {
         expression::ExprShPtr expression;
         std::shared_ptr<expression::ExpressionSequence> sequence;
-        indentationBlockType type;
+        token::tokenCategory_t type;
     };
 
 public:
     Interpreter(std::vector<token::tokenCategory_t> singleIndentationBlock,
                 std::vector<OperatorInfo> operatorsOrder,
-                std::string assignationPattern = "=")
-        : singleIndentationBlock_(std::move(singleIndentationBlock)),
-          operators_(std::move(operatorsOrder))
+                std::vector<AssignOperatorInfo> assignOperatorsOrder)
+        : singleIndentationBlock_(std::move(singleIndentationBlock))
     {
         reset();
-        std::size_t curPrior = operators_.size() + 1;
-        for (const auto &op : operators_)
+        std::size_t curPrior = assignOperatorsOrder.size() + 1 + operatorsOrder.size();
+        for (const auto &op : operatorsOrder)
         {
             operatorPriority_[op.tokenString] = curPrior--;
             operatorFunction_[op.tokenString] = op.functor;
         }
-        operatorPriority_[assignationPattern] = 0;
+        for (const auto &op : assignOperatorsOrder)
+        {
+            operatorPriority_[op.tokenString] = curPrior--;
+            assignOperatorFunction_[op.tokenString] = op.functor;
+        }
     }
 
     // Returns current indentation level
@@ -100,8 +101,8 @@ public:
         while (lineIndentationLevel < getIndentationLevel())
         {
             if (getIndentationLevel() - lineIndentationLevel == 1 &&
-                unfinishedExpressions_.top().type == indentationBlockType::COND_IF &&
-                lineCategory == indentationBlockType::COND_ELSE)
+                unfinishedExpressions_.top().type == token::tokenCategory::COND_IF &&
+                lineCategory == token::tokenCategory::COND_ELSE)
             {
                 unfinishedExpressions_.top().expression->addExpressionFromNextIndentationLevel(unfinishedExpressions_.top().sequence);
                 unfinishedExpressions_.top().sequence = std::make_shared<expression::ExpressionSequence>();
@@ -115,28 +116,36 @@ public:
         {
             exception::throwFromTokenIterator<exception::IndentationError>(beginTokens);
         }
-        if (lineCategory == indentationBlockType::COND_IF)
+        switch (lineCategory)
+        {
+        case token::tokenCategory::COND_IF:
         {
             auto newConditionalExpression = std::make_shared<expression::Conditional>(
                 buildExpression(
                     getNextNonSepTokenIt(beginTokens + 1, endTokens), endTokens));
             pushNewIndentation(newConditionalExpression, lineCategory);
+            break;
         }
-        else if (lineCategory == indentationBlockType::COND_ELSE)
+
+        case token::tokenCategory::COND_ELSE:
         {
-            if (unfinishedExpressions_.top().type != indentationBlockType::COND_IF)
+            if (unfinishedExpressions_.top().type != token::tokenCategory::COND_IF)
             {
                 exception::throwFromTokenIterator<exception::UnexpectedElseError>(beginTokens);
             }
+            break;
         }
-        else if (lineCategory == indentationBlockType::LOOP_WHILE)
+
+        case token::tokenCategory::LOOP_WHILE:
         {
             auto newLoopExpression = std::make_shared<expression::LoopWhile>(
                 buildExpression(
                     getNextNonSepTokenIt(beginTokens + 1, endTokens), endTokens));
             pushNewIndentation(newLoopExpression, lineCategory);
+            break;
         }
-        else if (lineCategory == indentationBlockType::DECLARATION)
+
+        case token::tokenCategory::DECLARATION:
         {
             auto nameIterator = getNextNonSepTokenIt(beginTokens + 1, endTokens);
             if (!(*nameIterator) || (*nameIterator)->getCategory() != token::tokenCategory::NAME)
@@ -148,10 +157,12 @@ public:
             expression::ExprShPtr definition = buildExpression(nameIterator, endTokens);
             unfinishedExpressions_.top().sequence->addExpression(std::move(declaration));
             unfinishedExpressions_.top().sequence->addExpression(std::move(definition));
+            break;
         }
-        else
-        {
+
+        default:
             unfinishedExpressions_.top().sequence->addExpression(buildExpression(beginTokens, endTokens));
+            break;
         }
     }
 
@@ -183,7 +194,7 @@ public:
         {
             unfinishedExpressions_.pop();
         }
-        pushNewIndentation(std::make_shared<expression::ExpressionSequence>(), indentationBlockType::UNDEFINED);
+        pushNewIndentation(std::make_shared<expression::ExpressionSequence>(), token::tokenCategory::UNDEFINED);
     }
 
 private:
@@ -195,7 +206,7 @@ private:
         unfinishedExpressions_.top().sequence->addExpression(expr);
     }
 
-    void pushNewIndentation(expression::ExprShPtr expr, indentationBlockType type)
+    void pushNewIndentation(expression::ExprShPtr expr, token::tokenCategory_t type)
     {
         UnfinishedExpression newExpr;
         newExpr.expression = std::move(expr);
@@ -204,17 +215,9 @@ private:
         unfinishedExpressions_.emplace(std::move(newExpr));
     }
 
-    static indentationBlockType getLineCategory(TokenIterator itBegin)
+    static token::tokenCategory_t getLineCategory(TokenIterator itBegin)
     {
-        static_assert(static_cast<int>(indentationBlockType::UNDEFINED) == 0);
-        auto itCategory = (*itBegin)->getCategory();
-        static std::unordered_map<token::tokenCategory_t, indentationBlockType> blockTypeByToken = {
-            {token::tokenCategory::COND_IF, indentationBlockType::COND_IF},
-            {token::tokenCategory::COND_ELSE, indentationBlockType::COND_ELSE},
-            {token::tokenCategory::LOOP_WHILE, indentationBlockType::LOOP_WHILE},
-            {token::tokenCategory::DECLARATION, indentationBlockType::DECLARATION},
-        };
-        return blockTypeByToken[itCategory];
+        return (*itBegin)->getCategory();
     }
 
     // Returns iterator on next non separation token
@@ -285,7 +288,13 @@ private:
             expressions.pop_back();
             auto leftExpr = expressions.back();
             expressions.pop_back();
-            auto assignExpr = std::make_shared<expression::AssignExpression>(leftExpr, rightExpr);
+            if (!assignOperatorFunction_[operators.back().string])
+            {
+                throw std::invalid_argument("can not find assignment operator " + operators.back().string);
+            }
+            auto assignExpr = std::make_shared<expression::AssignExpression>(leftExpr,
+                                                                             rightExpr,
+                                                                             assignOperatorFunction_[operators.back().string]);
             operators.pop_back();
             expressions.emplace_back(std::move(assignExpr));
         };
@@ -398,9 +407,9 @@ private:
 
     std::vector<token::tokenCategory_t> singleIndentationBlock_;
     std::stack<UnfinishedExpression> unfinishedExpressions_;
-    std::vector<OperatorInfo> operators_;
     std::unordered_map<std::string, int> operatorPriority_;
     std::unordered_map<std::string, expression::FunctionCall::FunctionType> operatorFunction_;
+    std::unordered_map<std::string, expression::AssignExpression::FunctionType> assignOperatorFunction_;
 }; // namespace interpreter
 } // namespace interpreter
 } // namespace peach

@@ -28,12 +28,19 @@ int main()
         .buildAppendFsm<peach::fsm::NumberFinder>(tokenCategory::VALUE_INT)           //
         .buildAppendFsm<peach::fsm::OperatorFinder>(
             std::vector<std::pair<std::string, tokenCategory_t>>{
+                {"&=", tokenCategory::ASSIGNMENT},
                 {"&", tokenCategory::OPERATOR_BI},
+                {"|=", tokenCategory::ASSIGNMENT},
                 {"|", tokenCategory::OPERATOR_BI},
+                {"*=", tokenCategory::ASSIGNMENT},
                 {"*", tokenCategory::OPERATOR_BI},
+                {"/=", tokenCategory::ASSIGNMENT},
                 {"/", tokenCategory::OPERATOR_BI},
+                {"%=", tokenCategory::ASSIGNMENT},
                 {"%", tokenCategory::OPERATOR_BI},
+                {"+=", tokenCategory::ASSIGNMENT},
                 {"+", tokenCategory::OPERATOR_BI},
+                {"-=", tokenCategory::ASSIGNMENT},
                 {"-", tokenCategory::OPERATOR_BI},
                 {"==", tokenCategory::OPERATOR_BI},
                 {"=", tokenCategory::ASSIGNMENT},
@@ -117,6 +124,7 @@ int main()
                                                            },
                                                            {
                                                                [](peach::expression::PeachTuple args) {
+                                                                   Logger::log(args[0], " - ", args[1], '\n');
                                                                    return args[0] - args[1];
                                                                },
                                                                "-",
@@ -178,7 +186,68 @@ int main()
                                                                "&",
                                                                tokenCategory::OPERATOR_BI,
                                                            },
-                                                       });
+                                                       },
+                                                       {
+                                                           {
+                                                               [](peach::expression::VType left, peach::expression::VType right) {
+                                                                   Logger::log(left, " = ", right, '\n');
+                                                                   return right;
+                                                               },
+                                                               "=",
+                                                               tokenCategory::ASSIGNMENT,
+                                                           },
+                                                           {
+                                                               [](peach::expression::VType left, peach::expression::VType right) {
+                                                                   return left + right;
+                                                               },
+                                                               "+=",
+                                                               tokenCategory::ASSIGNMENT,
+                                                           },
+                                                           {
+                                                               [](peach::expression::VType left, peach::expression::VType right) {
+                                                                   return left - right;
+                                                               },
+                                                               "-=",
+                                                               tokenCategory::ASSIGNMENT,
+                                                           },
+                                                           {
+                                                               [](peach::expression::VType left, peach::expression::VType right) {
+                                                                   return left * right;
+                                                               },
+                                                               "*=",
+                                                               tokenCategory::ASSIGNMENT,
+                                                           },
+                                                           {
+                                                               [](peach::expression::VType left, peach::expression::VType right) {
+                                                                   return left / right;
+                                                               },
+                                                               "/=",
+                                                               tokenCategory::ASSIGNMENT,
+                                                           },
+                                                           {
+                                                               [](peach::expression::VType left, peach::expression::VType right) {
+                                                                   return left % right;
+                                                               },
+                                                               "%=",
+                                                               tokenCategory::ASSIGNMENT,
+                                                           },
+                                                           {
+                                                               [](peach::expression::VType left, peach::expression::VType right) {
+                                                                   return left & right;
+                                                               },
+                                                               "&=",
+                                                               tokenCategory::ASSIGNMENT,
+                                                           },
+                                                           {
+                                                               [](peach::expression::VType left, peach::expression::VType right) {
+                                                                   return left | right;
+                                                               },
+                                                               "|=",
+                                                               tokenCategory::ASSIGNMENT,
+                                                           },
+                                                       }
+
+    );
 
     interpreter.interpretateLines(tokens.begin(), tokens.end());
     auto program = interpreter.getInterpretationResult();
