@@ -12,6 +12,32 @@
 #include "Exception.hpp"
 #include "Token.hpp"
 
+std::size_t indentation = 0;
+
+struct Logger
+{
+    template <typename... Args>
+    static void log(Args &&... args)
+    {
+        for (std::size_t i = 0; i < indentation; ++i)
+        {
+            std::cout << '\t';
+        }
+        (std::cout << ... << args);
+        std::cout.flush();
+    }
+
+    static void pushIndentation()
+    {
+        indentation++;
+    }
+
+    static void popIndentation()
+    {
+        indentation--;
+    }
+};
+
 namespace peach
 {
 namespace expression
@@ -136,11 +162,17 @@ public:
 
         PeachTuple callArgs;
 
+        Logger::log("function call begin, arguments:", '\n');
+        Logger::pushIndentation();
         for (std::size_t argId = 0; argId < expressions_.value().size(); ++argId)
         {
             callArgs.emplace_back(expressions_.value()[argId]->eval(scope));
+            Logger::log(callArgs.back(), '\n');
         }
-        return f_.value()(callArgs);
+        auto res = f_.value()(callArgs);
+        Logger::popIndentation();
+        Logger::log("function result: ", res, '\n');
+        return res;
     }
 
 private:
@@ -258,7 +290,7 @@ public:
     VType eval(Scope &scope) override
     {
         VType result{};
-        while (loopCond_->eval(scope))
+        while (auto res = loopCond_->eval(scope))
         {
             result = loopBody_->eval(scope);
         }
@@ -297,6 +329,7 @@ public:
         {
             exception::throwFromCoords<exception::UnknownVariable>(111, 222); // Expression must know its position
         }
+        Logger::log("access to variable ", varName_, " which is ", scope[varName_], '\n');
         return scope[varName_];
     }
 };
@@ -320,29 +353,24 @@ public:
 class AssignExpression : public SingleIndentationLevelExpression
 {
 public:
-    AssignExpression(ExprShPtr left = nullptr,
-                     ExprShPtr right = nullptr)
-    {
-        setLeftExpression(left);
-        setRightExpression(right);
-    }
+    using FunctionType = std::function<VType(VType, VType)>;
 
-    void setLeftExpression(ExprShPtr expr)
+    AssignExpression(
+        ExprShPtr left,
+        ExprShPtr right,
+        FunctionType functor)
+        : functor_(std::move(functor))
     {
-        if (!expr)
+        if (!left || !right)
         {
-            return;
+            throw std::invalid_argument("nullptr expression in AssignExpression constructor");
         }
-        left_ = std::dynamic_pointer_cast<LvalueExpression>(expr);
+        left_ = std::dynamic_pointer_cast<LvalueExpression>(left);
         if (!left_)
         {
             exception::throwFromCoords<exception::InvalidAssignationError>(0, 0); // TODO: expression must know its position
         }
-    }
-
-    void setRightExpression(ExprShPtr expr)
-    {
-        right_ = std::move(expr);
+        right_ = std::move(right);
     }
 
     VType eval(Scope &scope) override
@@ -351,12 +379,20 @@ public:
         {
             throw std::invalid_argument("AssignExpression does not have expression yet");
         }
-        return scope[left_->getVariableName()] = right_->eval(scope); // TODO: variable invisibility
+        auto rightEvalRes = right_->eval(scope);
+        Logger::log("assignation, value ", left_->getVariableName(), " before: ", scope[left_->getVariableName()], '\n');
+        Logger::pushIndentation();
+        auto res = functor_(scope[left_->getVariableName()], rightEvalRes);
+        scope[left_->getVariableName()] = res;
+        Logger::popIndentation();
+        Logger::log("assignation, value ", left_->getVariableName(), " after: ", scope[left_->getVariableName()], '\n');
+        return res;
     }
 
 private:
     std::shared_ptr<LvalueExpression> left_;
     ExprShPtr right_;
-}; // namespace expression
+    FunctionType functor_;
+};
 } // namespace expression
 } // namespace peach
