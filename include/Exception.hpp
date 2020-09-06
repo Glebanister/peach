@@ -172,14 +172,14 @@ public:
     }
 };
 
-class UnknownVariable : public PositionalError
+class UnknownVariableError : public PositionalError
 {
 public:
-    UnknownVariable(std::size_t line,
-                    std::size_t position)
+    UnknownVariableError(std::size_t line,
+                         std::size_t position)
         : PositionalError(line,
                           position,
-                          "UnknownVariable", "variable is not visible")
+                          "UnknownVariableError", "variable is not visible")
     {
     }
 };

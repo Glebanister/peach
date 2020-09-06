@@ -12,32 +12,6 @@
 #include "Exception.hpp"
 #include "Token.hpp"
 
-std::size_t indentation = 0;
-
-struct Logger
-{
-    template <typename... Args>
-    static void log(Args &&... args)
-    {
-        // for (std::size_t i = 0; i < indentation; ++i)
-        // {
-        //     std::cout << '\t';
-        // }
-        // (std::cout << ... << args);
-        // std::cout.flush();
-    }
-
-    static void pushIndentation()
-    {
-        indentation++;
-    }
-
-    static void popIndentation()
-    {
-        indentation--;
-    }
-};
-
 namespace peach
 {
 namespace expression
@@ -49,21 +23,26 @@ using VType = std::int32_t; // TODO: literals at least
 class Scope
 {
 public:
+    // Returns VType that corresponds to varName
+    // If scope does not contain such varName, throws UnknownVariableError
     VType &operator[](const std::string &varName)
     {
         auto it = memory_.find(varName);
         if (it == memory_.end())
         {
-            exception::throwFromCoords<exception::UnknownVariable>(0, 0);
+            exception::throwFromCoords<exception::UnknownVariableError>(0, 0);
         }
         return it->second;
     }
 
+    // Declares variable varName in scope, value can be presetted
+    // Returns reference on varName in scope
     VType &declare(const std::string &varName, const VType &value = VType{})
     {
         return memory_[varName] = value;
     }
 
+    // Returns if scope contains variable with name varName
     bool hasName(const std::string &varName) const
     {
         return memory_.find(varName) != memory_.end();
@@ -78,6 +57,7 @@ class Expression;
 using ExprPtr = std::unique_ptr<Expression>;
 using ExprShPtr = std::shared_ptr<Expression>;
 
+// Object, that can be evaluated
 class Expression
 {
 public:
@@ -85,21 +65,17 @@ public:
     // Returns [evaluation result; state]
     virtual VType eval(Scope &) = 0;
 
+    //
     virtual void addExpressionFromNextIndentationLevel(ExprShPtr expr) = 0;
-
-    virtual bool doesNeedBlockFromNextIndentationLevel() const noexcept = 0;
 
     virtual ~Expression() = default;
 };
 
+// Expression that does not need next level indentation block
+// For example: 'if' or 'while' does need it, 'let a = 0' does not
 class SingleIndentationLevelExpression : public Expression
 {
 public:
-    bool doesNeedBlockFromNextIndentationLevel() const noexcept final
-    {
-        return false;
-    }
-
     void addExpressionFromNextIndentationLevel(ExprShPtr) final
     {
         throw std::invalid_argument("SingleIndentationLevelExpression can not be extended with expression from next indentation level");
@@ -144,6 +120,7 @@ inline void checkOptionalNotEmptyOrThrow(const std::optional<T> &x,
 
 using PeachTuple = std::vector<VType>;
 
+// Any function or operator call in peach
 class FunctionCall : public SingleIndentationLevelExpression
 {
 public:
@@ -161,17 +138,11 @@ public:
         details::checkOptionalNotEmptyOrThrow(f_, "function is not set yet");
 
         PeachTuple callArgs;
-
-        Logger::log("function call begin, arguments:", '\n');
-        Logger::pushIndentation();
         for (std::size_t argId = 0; argId < expressions_.value().size(); ++argId)
         {
             callArgs.emplace_back(expressions_.value()[argId]->eval(scope));
-            Logger::log(callArgs.back(), '\n');
         }
         auto res = f_.value()(callArgs);
-        Logger::popIndentation();
-        Logger::log("function result: ", res, '\n');
         return res;
     }
 
@@ -180,6 +151,7 @@ private:
     std::optional<FunctionType> f_;
 };
 
+// Value of type VType
 class VTypeValue : public SingleIndentationLevelExpression
 {
 public:
@@ -197,16 +169,12 @@ private:
     VType value_;
 };
 
+// if/else conditional. if ifCond_ is true, evaluates ifWay_, elseWay_ otherwise
 class Conditional : public Expression
 {
 public:
     Conditional(ExprShPtr ifCond)
         : ifCond_(std::move(ifCond)) {}
-
-    bool doesNeedBlockFromNextIndentationLevel() const noexcept final
-    {
-        return !ifWay_;
-    }
 
     void addExpressionFromNextIndentationLevel(ExprShPtr expr) override
     {
@@ -246,9 +214,11 @@ private:
     ExprShPtr ifCond_, ifWay_, elseWay_;
 };
 
+// Sequence of Expressions, evaluates in adding order
 class ExpressionSequence : public SingleIndentationLevelExpression
 {
 public:
+    // Adds expr to sequence
     void addExpression(ExprShPtr expr)
     {
         exprs_.emplace_back(std::move(expr));
@@ -267,16 +237,13 @@ private:
     std::vector<ExprShPtr> exprs_;
 };
 
+// while loop
+// while loopCond_ returns true loopBody_ evaluates
 class LoopWhile : public Expression
 {
 public:
     LoopWhile(ExprShPtr cond)
         : loopCond_(std::move(cond)) {}
-
-    bool doesNeedBlockFromNextIndentationLevel() const noexcept final
-    {
-        return true;
-    }
 
     void addExpressionFromNextIndentationLevel(ExprShPtr expr) override
     {
@@ -302,6 +269,7 @@ private:
     ExprShPtr loopBody_;
 };
 
+// Expression that contains variable
 class LvalueExpression : public SingleIndentationLevelExpression
 {
 public:
@@ -317,6 +285,7 @@ protected:
     std::string varName_;
 };
 
+// Gives access to variable with name 'name'
 class VariableAccess : public LvalueExpression
 {
 public:
@@ -327,13 +296,13 @@ public:
     {
         if (!scope.hasName(varName_))
         {
-            exception::throwFromCoords<exception::UnknownVariable>(111, 222); // Expression must know its position
+            exception::throwFromCoords<exception::UnknownVariableError>(111, 222); // Expression must know its position
         }
-        Logger::log("access to variable ", varName_, " which is ", scope[varName_], '\n');
         return scope[varName_];
     }
 };
 
+// Declares variable with name 'name'
 class VariableDeclaration : public LvalueExpression
 {
 public:
@@ -350,6 +319,8 @@ public:
     }
 };
 
+// Assigns left expression to right.
+// Can be constructed iff left expression is LvalueExpression
 class AssignExpression : public SingleIndentationLevelExpression
 {
 public:
@@ -380,12 +351,8 @@ public:
             throw std::invalid_argument("AssignExpression does not have expression yet");
         }
         auto rightEvalRes = right_->eval(scope);
-        Logger::log("assignation, value ", left_->getVariableName(), " before: ", scope[left_->getVariableName()], '\n');
-        Logger::pushIndentation();
         auto res = functor_(scope[left_->getVariableName()], rightEvalRes);
         scope[left_->getVariableName()] = res;
-        Logger::popIndentation();
-        Logger::log("assignation, value ", left_->getVariableName(), " after: ", scope[left_->getVariableName()], '\n');
         return res;
     }
 
