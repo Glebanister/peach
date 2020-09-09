@@ -55,8 +55,16 @@ cmake ..
 - Simply run `/build/peach`, you will get:
 
 ```bash
-gleb@ZenBook:~/Documents/projects/peach$ ./build/peach 
+gleb@ZenBook:~/Documents/projects/peach$ ./build/peach
 Peach
+>>> let even_numbers = 0
+0
+>>> let n = 11
+11
+>>> while n -= 1
+...     even_numbers += n % 2 == 0
+...
+5
 >>>
 ```
 
