@@ -63,15 +63,26 @@ Peach
 - Simply run `/build/peach <filename>`, where `<filename>` contains program code, for example, if this is `hello.pch`
 
 ```javascript
-let a = 10
-a += 1
+let a = 123
+let cnt_even = 0
+let cnt_odd = 0
+let some_other_variable
+while (a != 0) & cnt_even < 10
+    if a % 2 == 0
+        cnt_even += 1
+        if cnt_even % 3 == 2:
+            some_other_variable += 2 ** cnt_even
+    else
+        cnt_odd += 1
+    a -= 1
+some_other_variable
 ```
 
 Then you program evaluation will look like:
 
 ```bash
 gleb@ZenBook:~/Documents/projects/peach$ ./build/peach hello.pch
-11
+292
 ```
 
 ## Documentation

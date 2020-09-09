@@ -1,10 +1,13 @@
 let a = 123
 let cnt_even = 0
 let cnt_odd = 0
+let some_other_variable
 while (a != 0) & cnt_even < 10
 	if a % 2 == 0
 		cnt_even += 1
+		if cnt_even % 3 == 2:
+			some_other_variable += 2 ** cnt_even
 	else
 		cnt_odd += 1
 	a -= 1
-cnt_odd
+some_other_variable
