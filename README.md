@@ -44,6 +44,7 @@ clang-10 --version
 ```bash
 mkdir build && cd build
 cmake ..
+make
 ```
 
 - Executable file can be found in `/build/peach` if build was successfull

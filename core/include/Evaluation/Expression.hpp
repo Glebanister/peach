@@ -257,7 +257,7 @@ public:
     VType eval(Scope &scope) override
     {
         VType result{};
-        while (auto res = loopCond_->eval(scope))
+        while (loopCond_->eval(scope))
         {
             result = loopBody_->eval(scope);
         }

@@ -323,6 +323,7 @@ private:
                 break;
             case token::tokenCategory::BRACKET_OPEN:
                 exception::throwFromTokenIterator<exception::BracketDisbalanceError>(operators.back().position);
+                break;
             default:
                 exception::throwFromTokenIterator<exception::UndefinedOperatorError>(operators.back().position);
             }
