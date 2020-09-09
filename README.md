@@ -5,6 +5,10 @@
 Lightweight dependency-free scripting language with C++17, that can be
 extended by user. All scripts can be evaluated in your program runtime.
 
+## Documentation
+
+Wiki is avaiable on github: [syntax page](https://github.com/Glebanister/peach/wiki/Syntax)
+
 ## Current features
 
 - Command line interpreter
@@ -84,7 +88,3 @@ Then you program evaluation will look like:
 gleb@ZenBook:~/Documents/projects/peach$ ./build/peach hello.pch
 292
 ```
-
-## Documentation
-
-Wiki is avaiable on github: [syntax page](https://github.com/Glebanister/peach/wiki/Syntax)
