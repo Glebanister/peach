@@ -97,3 +97,23 @@ Then you program evaluation will look like:
 gleb@ZenBook:~/Documents/projects/peach$ ./build/peach hello.pch
 292
 ```
+
+### Evaluate in C++17 program runtime
+
+```C++
+#include <fstream>
+
+#include "PeachCli.hpp"
+
+int main()
+{
+    auto programFile = std::ifstream("<your-peach-program-relative-path>");
+    auto interpreter = peach::cli::PeachCli();
+    peach::cli::PeachCli().getScope().declare("var", 10);
+    peach::cli::PeachCli().getScope().declare("bar", 20);
+    // Now interpreter contains two variables: var = 10, bar = 20
+    interpreter.executeProgram(programFile, std::cerr);
+    std::cout << "var: " << interpreter.getScope()["var"] << std::endl;
+    std::cout << "bar: " << interpreter.getScope()["bar"] << std::endl;
+}
+```

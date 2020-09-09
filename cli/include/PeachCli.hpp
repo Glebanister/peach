@@ -313,6 +313,12 @@ public:
         }
     }
 
+    // Retuns reference on current state of cli
+    expression::Scope &getScope()
+    {
+        return scope_;
+    }
+
 private:
     fsm::FsmCollection tokenizator_;
     interpreter::Interpreter interpreter_;
