@@ -1,7 +1,11 @@
-# Welcome to peach 🍑
+# peach 🍑
 
-Peach is lightweight dependency-free scripting language with C++17, that can be
-extended by user. All scripts can be evaluated in your C++ program runtime.
+Lightweight dependency-free scripting language with C++17, that can be
+extended by user. All scripts can be evaluated in your program runtime.
+
+## Documentation
+
+Wiki is avaiable on github: [syntax page](https://github.com/Glebanister/peach/wiki/Syntax)
 
 ## Current features
 
@@ -38,6 +42,7 @@ clang-10 --version
 ```bash
 mkdir build && cd build
 cmake ..
+make
 ```
 
 - Executable file can be found in `/build/peach` if build was successfull
@@ -49,8 +54,16 @@ cmake ..
 - Simply run `/build/peach`, you will get:
 
 ```bash
-gleb@ZenBook:~/Documents/projects/peach$ ./build/peach 
+gleb@ZenBook:~/Documents/projects/peach$ ./build/peach
 Peach
+>>> let even_numbers = 0
+0
+>>> let n = 11
+11
+>>> while n -= 1
+...     even_numbers += n % 2 == 0
+...
+5
 >>>
 ```
 
@@ -61,17 +74,24 @@ Peach
 - Simply run `/build/peach <filename>`, where `<filename>` contains program code, for example, if this is `hello.pch`
 
 ```javascript
-let a = 10
-a += 1
+let a = 123
+let cnt_even = 0
+let cnt_odd = 0
+let some_other_variable
+while (a != 0) & cnt_even < 10
+    if a % 2 == 0
+        cnt_even += 1
+        if cnt_even % 3 == 2:
+            some_other_variable += 2 ** cnt_even
+    else
+        cnt_odd += 1
+    a -= 1
+some_other_variable
 ```
 
 Then you program evaluation will look like:
 
 ```bash
 gleb@ZenBook:~/Documents/projects/peach$ ./build/peach hello.pch
-11
+292
 ```
-
-## Documentation
-
-Wiki is avaiable on github: [github wiki](https://github.com/Glebanister/peach/wiki)
