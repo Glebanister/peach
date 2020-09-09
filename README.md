@@ -109,8 +109,8 @@ int main()
 {
     auto programFile = std::ifstream("<your-peach-program-relative-path>");
     auto interpreter = peach::cli::PeachCli();
-    peach::cli::PeachCli().getScope().declare("var", 10);
-    peach::cli::PeachCli().getScope().declare("bar", 20);
+    interpreter.getScope().declare("var", 10);
+    interpreter.getScope().declare("bar", 20);
     // Now interpreter contains two variables: var = 10, bar = 20
     interpreter.executeProgram(programFile, std::cerr);
     std::cout << "var: " << interpreter.getScope()["var"] << std::endl;
