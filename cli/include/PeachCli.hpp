@@ -6,6 +6,7 @@
 #include "Finders/NumberFinder.hpp"
 #include "Finders/OperatorFinder.hpp"
 #include "Finders/SingleCharFinder.hpp"
+#include "Finders/LiteralFinder.hpp"
 
 #include "FsmCollection.hpp"
 #include "Interpreter.hpp"
