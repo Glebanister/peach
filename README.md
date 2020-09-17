@@ -51,7 +51,7 @@ make
 
 ## How to use
 
-### Using with command line interface
+### Use with command line interface
 
 - Simply run `/build/peach`, you will get:
 
