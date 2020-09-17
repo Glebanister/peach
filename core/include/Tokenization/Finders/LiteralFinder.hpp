@@ -19,7 +19,8 @@ public:
     {
         auto node = getRoot()->template addTransitionToNewNode<transition::SingleCharTransitionTemplate<Separator>>(token::tokenCategory::UNDEFINED);
         node->template addTransition<transition::TransitionNegation<transition::SingleCharTransitionTemplate<Separator>>>(node);
-        node->template addTransitionToNewNode<transition::SingleCharTransitionTemplate<Separator>>(category);
+        auto terminal = node->template addTransitionToNewNode<transition::SingleCharTransitionTemplate<Separator>>(token::tokenCategory::UNDEFINED);
+        terminal->template addTransitionToNewNode<transition::TrueTransition>(category);
     }
 };
 } // namespace fsm
