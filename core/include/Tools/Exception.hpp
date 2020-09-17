@@ -55,7 +55,7 @@ template <typename ExceptionT,
 inline void throwFromTokenIterator(const std::vector<token::TokenPtr>::iterator &it)
 {
     throw ExceptionT((*it)->getLine(),
-                     (*it)->getPosition());
+                     (*it)->getLinePosition());
 }
 
 template <typename ExceptionT> // TODO: sfinae!

@@ -137,25 +137,28 @@ public:
     Token(tokenCategory_t category,
           std::string token,
           std::size_t line,
-          std::size_t position)
+          std::size_t linePosition,
+          std::size_t textPosition)
         : category_(std::move(category)),
           token_(std::move(token)),
           line_(std::move(line)),
-          position_(std::move(position))
+          linePosition_(std::move(linePosition)),
+          textPosition_(std::move(textPosition))
     {
     }
 
     tokenCategory_t getCategory() const noexcept { return category_; }
     std::string getTokenString() const { return token_; }
     std::size_t getLine() const noexcept { return line_; }
-    int getPosition() const noexcept { return position_; }
+    int getLinePosition() const noexcept { return linePosition_; }
+    int getTextPosition() const noexcept { return textPosition_; }
 
     void setCategory(tokenCategory_t category) noexcept { category_ = category; }
 
 private:
     tokenCategory_t category_;
     std::string token_;
-    std::size_t line_, position_;
+    std::size_t line_, linePosition_, textPosition_;
 };
 
 using TokenPtr = std::unique_ptr<Token>;

@@ -44,11 +44,6 @@ public:
         }
         std::vector<std::unique_ptr<token::Token>> tokens;
         auto processChar = [&](char c) {
-            if (token::isEndline(c))
-            {
-                ++currentTokenLine_;
-                currentTokenBeginPos_ = 0;
-            }
             auto newToken = pushNextChar(c);
             if (newToken)
             {
@@ -75,7 +70,8 @@ public:
     {
         resetFsmId();
         currentToken_ = "";
-        currentTokenBeginPos_ = 0;
+        currentTokenLineBeginPos_ = 0;
+        currentTokenTextBeginPos_ = 0;
         currentTokenLine_ = 0;
     }
 
@@ -137,12 +133,20 @@ private:
     // Returns unique pointer on new token
     std::unique_ptr<token::Token> buildAndMoveCurrentToken(token::tokenCategory_t category)
     {
-        auto tokenBeginPos = currentTokenBeginPos_;
-        currentTokenBeginPos_ += currentToken_.length();
+        auto tokenLineBeginPos = currentTokenLineBeginPos_;
+        auto tokenTextBeginPos = currentTokenTextBeginPos_;
+        currentTokenTextBeginPos_ += currentToken_.length();
+        currentTokenLineBeginPos_ += currentToken_.length();
+        if (!currentToken_.empty() && token::isEndline(currentToken_[0]))
+        {
+            currentTokenLineBeginPos_ = 0;
+            ++currentTokenLine_;
+        }
         auto result = std::make_unique<token::Token>(category,
                                                      std::move(currentToken_),
-                                                     currentTokenLine_ + 1,
-                                                     tokenBeginPos + 1);
+                                                     currentTokenLine_,
+                                                     tokenLineBeginPos,
+                                                     tokenTextBeginPos);
         currentToken_.clear();
         resetFsmId();
         return result;
@@ -187,8 +191,9 @@ private:
     std::vector<std::unique_ptr<FiniteStateMachine>> collection_; // FSM collection
     int currentFsmId_ = -1;                                       // current fsm id in vector
     std::string currentToken_ = "";                               // current token string
-    std::size_t currentTokenBeginPos_ = 0;                        // current token begin position
-    std::size_t currentTokenLine_ = 0;
+    std::size_t currentTokenLineBeginPos_ = 0;                    // current token begin position in line
+    std::size_t currentTokenTextBeginPos_ = 0;                    // current token begin position in text
+    std::size_t currentTokenLine_ = 0;                            // current token line number
 };
 } // namespace fsm
 } // namespace peach
