@@ -104,31 +104,41 @@ struct tokenCategory
         _TOKEN_TOTAL = 20;
 };
 
-inline void printCategory(tokenCategory_t category)
+static std::vector<std::string> tokenCategoryString = {
+    "UNDEFINED",
+    "NAME",
+    "VALUE",
+    "OPERATOR_BI",
+    "OPERATOR_UN",
+    "ASSIGNMENT",
+    "COND_IF",
+    "COND_ELIF",
+    "COND_ELSE",
+    "LOOP_WHILE",
+    "BRACKET_OPEN",
+    "BRACKET_CLOSE",
+    "SEP_ENDL",
+    "SEP_TAB",
+    "SEP_SPACE",
+    "VALUE_FLOATING",
+    "VALUE_INT",
+    "COLON",
+    "SEMICOLON",
+    "DECLARATION",
+};
+
+void registerTokenCategoryString(const std::string &name)
 {
-    const std::array<std::string, static_cast<std::size_t>(tokenCategory::_TOKEN_TOTAL)> tokenCategoryString = {
-        "UNDEFINED",
-        "NAME",
-        "VALUE",
-        "OPERATOR_BI",
-        "OPERATOR_UN",
-        "ASSIGNMENT",
-        "COND_IF",
-        "COND_ELIF",
-        "COND_ELSE",
-        "LOOP_WHILE",
-        "BRACKET_OPEN",
-        "BRACKET_CLOSE",
-        "SEP_ENDL",
-        "SEP_TAB",
-        "SEP_SPACE",
-        "VALUE_FLOATING",
-        "VALUE_INT",
-        "COLON",
-        "SEMICOLON",
-        "DECLARATION",
-    };
-    std::cout << tokenCategoryString[static_cast<std::size_t>(category)];
+    tokenCategoryString.push_back(name);
+}
+
+inline void printCategory(std::ostream &os, tokenCategory_t category)
+{
+    if (static_cast<std::size_t>(category) >= tokenCategoryString.size())
+    {
+        throw std::invalid_argument("can not print category, it is not registred yet");
+    }
+    os << tokenCategoryString[static_cast<std::size_t>(category)];
 }
 
 class Token
