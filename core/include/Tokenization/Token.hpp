@@ -128,7 +128,7 @@ static std::vector<std::string> tokenCategoryString = {
     "DECLARATION",
 };
 
-void registerTokenCategoryString(const std::string &name)
+inline void registerTokenCategoryString(const std::string &name)
 {
     tokenCategoryString.push_back(name);
 }
