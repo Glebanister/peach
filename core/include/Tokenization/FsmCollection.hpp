@@ -44,11 +44,7 @@ public:
         }
         std::vector<std::unique_ptr<token::Token>> tokens;
         auto processChar = [&](char c) {
-            auto newToken = pushNextChar(c);
-            if (newToken)
-            {
-                tokens.emplace_back(std::move(newToken));
-            }
+            pushNextChar(c, tokens);
         };
         std::for_each(text.begin(), text.end(), processChar);
         processChar('\0');
@@ -106,27 +102,35 @@ private:
     }
 
     // Pushes next char in text to FSMs collection.
-    // Returns unique pointer to new token, if terminal has been reached, nullptr otherwise.
-    std::unique_ptr<token::Token> pushNextChar(char c)
+    // Adds unique pointer to tokens, if terminal has been reached.
+    void pushNextChar(char c, std::vector<std::unique_ptr<token::Token>> &tokens)
     {
+        auto addToken = [&](std::unique_ptr<token::Token> &&tk) {
+            if (!tk->getTokenString().empty() && tk->getTokenString()[0] != '\0')
+            {
+                tokens.emplace_back(std::move(tk));
+            }
+        };
 
         if (auto [successPush, prevNodeCategory] = pushCharRecursively(c); !successPush)
         {
             currentToken_ += c;
-            return buildAndMoveCurrentToken(prevNodeCategory);
+            if (auto tk = buildAndMoveCurrentToken(prevNodeCategory))
+            {
+                if (!tk->getTokenString().empty() && tk->getTokenString()[0] != '\0')
+                {
+                    addToken(std::move(tk));
+                }
+            }
+            return;
         }
         else if (prevNodeCategory != token::tokenCategory::UNDEFINED)
         {
-            auto result = buildAndMoveCurrentToken(prevNodeCategory);
-            if (auto unexpectedToken = pushNextChar(c); unexpectedToken &&
-                                                        unexpectedToken->getCategory() != token::tokenCategory::UNDEFINED)
-            {
-                throw std::logic_error("distance between FSM root and any node should be at least 2 transitions"); // TODO: bad description
-            }
-            return result;
+            addToken(buildAndMoveCurrentToken(prevNodeCategory));
+            pushNextChar(c, tokens);
+            return;
         }
         currentToken_ += c;
-        return nullptr;
     }
 
     // Builds new token from currentToken_ currentTokenBeginPos_ and current node category
