@@ -21,6 +21,7 @@ enum class tokenCategory
     SEP,
     COLON,
     SEMICOLON,
+    LITERAL,
     _TOKEN_TOTAL
 };
 
