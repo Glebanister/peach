@@ -1,6 +1,11 @@
 #pragma once
 
+#include <algorithm>
+#include <cassert>
+#include <ostream>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 
 #include "Token.hpp"
 
@@ -8,210 +13,86 @@ namespace peach
 {
 namespace exception
 {
-class PeachException : public std::exception
+struct PeachError
 {
-public:
-    PeachException(const std::string &exceptionClass,
-                   const std::string &exceptionMessage = "")
-        : report_(exceptionClass + (exceptionClass.empty() ? "" : (": " + exceptionMessage)))
-    {
-    }
+    PeachError(const std::string &name_,
+               const std::string &description_)
+        : name(name_), description(description_) {}
 
-    const char *what() const throw()
-    {
-        return report_.c_str();
-    }
-
-private:
-    const std::string report_;
+    const std::string name, description;
 };
 
-class PositionalError : public PeachException
+struct PositionalError : PeachError
 {
-public:
-    PositionalError(std::size_t line,
-                    std::size_t position,
-                    const std::string &exceptionClass,
-                    const std::string &comment)
-        : PeachException(exceptionClass,
-                         comment + " at " +
-                             std::to_string(line) +
-                             ":" + std::to_string(position)),
-          line_(line),
-          position_(position)
-    {
-    }
-
-    std::size_t getLine() const noexcept { return line_; }
-    std::size_t getPosition() const noexcept { return position_; }
-
-private:
-    const std::size_t line_, position_;
+    PositionalError(const std::string &name_,
+                    const std::string &description_,
+                    std::size_t textPosition_)
+        : PeachError(name_, description_), position(textPosition_) {}
+    const int position;
 };
 
-template <typename ExceptionT,
-          typename = decltype(std::declval<ExceptionT>().getLine()),
-          typename = decltype(std::declval<ExceptionT>().getPosition())> // TODO: sfinae!
-inline void throwFromTokenIterator(const std::vector<token::TokenPtr>::iterator &it)
+struct PositionalErrorPinter
 {
-    throw ExceptionT((*it)->getLine(),
-                     (*it)->getLinePosition());
+    const PositionalError error;
+    const std::string::iterator begin; // text begin
+    const std::string::iterator end;   // text end
+};
+
+std::ostream &operator<<(std::ostream &os, const PeachError &error)
+{
+    return os << error.name << ": " << error.description;
 }
 
-template <typename ExceptionT> // TODO: sfinae!
-inline void throwFromCoords(std::size_t line, std::size_t pos)
+std::ostream &operator<<(std::ostream &os, const PositionalErrorPinter &printer)
 {
-    throw ExceptionT(line, pos);
+    // Returns char from program text by index
+    auto text = [&](int index) {
+        assert(index < std::distance(printer.begin, printer.end));
+        return *(printer.begin + index);
+    };
+    int badStringEnd = std::distance(printer.begin, std::find(printer.begin, printer.end, '\n'));
+    // if (badStringEnd == -1)
+    // {
+    //     badStringEnd = printer.text.size(); // TODO: one of corner cases
+    // }
+    int badStringBegin = badStringEnd - 1;
+    for (; badStringBegin >= 1 && text(badStringBegin - 1) != '\n'; --badStringBegin)
+        ;
+    int badStringLineN = std::count(printer.begin + badStringBegin, printer.begin + badStringEnd, '\n');
+    int badCharPosition = printer.error.position - badStringBegin;
+
+    for (int i = badStringBegin; i < badStringEnd; ++i)
+    {
+        os << text(i);
+    }
+    os << '\n';
+
+    for (int i = 0; i < badStringEnd - badStringBegin; ++i)
+    {
+        os << (badCharPosition == i ? "^" : "_");
+    }
+    os << PeachError(printer.error);
+    os << "at position" << ' '
+       << badStringLineN + 1 << ':'
+       << badCharPosition + 1 << std::endl;
+    return os;
 }
 
-class IndentationError : public PositionalError
+namespace throwError
 {
-public:
-    IndentationError(std::size_t line,
-                     std::size_t position)
-        : PositionalError(line,
-                          position,
-                          "IndentationError", "bad indentation")
-    {
-    }
-};
-
-class SyntaxError : public PositionalError
-{
-public:
-    SyntaxError(std::size_t line,
-                std::size_t position)
-        : PositionalError(line,
-                          position,
-                          "SyntaxError", "invalid syntax")
-    {
-    }
-};
-
-class InvalidVariableDeclarationError : public PositionalError
-{
-public:
-    InvalidVariableDeclarationError(std::size_t line,
-                                    std::size_t position)
-        : PositionalError(line,
-                          position,
-                          "InvalidVariableDeclarationError", "name expected")
-    {
-    }
-};
-
-class UndefinedTokenError : public PositionalError
-{
-public:
-    UndefinedTokenError(std::size_t line,
-                        std::size_t position)
-        : PositionalError(line,
-                          position,
-                          "UndefinedTokenError", "can not recognize token")
-    {
-    }
-};
-
-class UnexpectedTokenError : public PositionalError
-{
-public:
-    UnexpectedTokenError(std::size_t line,
-                         std::size_t position)
-        : PositionalError(line,
-                          position,
-                          "UnexpectedTokenError", "token is not expected")
-    {
-    }
-};
-
-class UnexpectedElseError : public PositionalError
-{
-public:
-    UnexpectedElseError(std::size_t line,
-                        std::size_t position)
-        : PositionalError(line,
-                          position,
-                          "UnexpectedElseError", "can not process 'else' if it not preceded by 'if'")
-    {
-    }
-};
-
-class UndefinedOperatorError : public PositionalError
-{
-public:
-    UndefinedOperatorError(std::size_t line,
-                           std::size_t position)
-        : PositionalError(line,
-                          position,
-                          "UndefinedOperatorError", "can't find operator")
-    {
-    }
-};
-
-class BracketDisbalanceError : public PositionalError
-{
-public:
-    BracketDisbalanceError(std::size_t line,
-                           std::size_t position)
-        : PositionalError(line,
-                          position,
-                          "BracketDisbalanceError", "can't match bracket")
-    {
-    }
-};
-
-class InvalidAssignationError : public PositionalError
-{
-public:
-    InvalidAssignationError(std::size_t line,
-                            std::size_t position)
-        : PositionalError(line,
-                          position,
-                          "InvalidAssignationError", "left expression must be variable access")
-    {
-    }
-};
-
-class UnknownVariableError : public PositionalError
-{
-public:
-    UnknownVariableError(std::size_t line,
-                         std::size_t position)
-        : PositionalError(line,
-                          position,
-                          "UnknownVariableError", "variable is not visible")
-    {
-    }
-};
-
-class VariableRedeclaration : public PositionalError
-{
-public:
-    VariableRedeclaration(std::size_t line,
-                          std::size_t position)
-        : PositionalError(line,
-                          position,
-                          "VariableRedeclaration", "variable is declared already")
-    {
-    }
-};
-
-class InterruptionError : public PeachException
-{
-public:
-    InterruptionError()
-        : PeachException("InterruptionError", "interpretation unexpectedly finished")
-    {
-    }
-};
-
-class ZeroDivisionError : public PeachException
-{
-public:
-    ZeroDivisionError()
-        : PeachException("ZeroDivisionError", "can't divide by zero")
-    {
-    }
-};
+inline void indentation(int p) { throw PositionalError{"IndentationError", "invalid indentation", p}; }
+inline void syntax(int p) { throw PositionalError{"SyntaxError", "invalid syntax", p}; }
+inline void variableDeclaration(int p) { throw PositionalError{"VariableDeclarationError", "name expected", p}; }
+inline void undefinedToken(int p) { throw PositionalError{"UndefinedTokenError", "token can not be recognized", p}; }
+inline void unexpextedToken(int p) { throw PositionalError{"UnexpectedTokenError", "token is not expected", p}; }
+inline void unexpectedElse(int p) { throw PositionalError{"UnexpectedElseError", "can not process 'else' if it not preceded by 'if'", p}; }
+inline void undefinedOperator(int p) { throw PositionalError{"UndefinedOperatorError", "invalid syntax", p}; }
+inline void bracketDisbalance(int p) { throw PositionalError{"BracketDisbalanceError", "can't match bracket", p}; }
+inline void invalidAssignation(int p) { throw PositionalError{"InvalidAssignationError", "left expression must be variable access", p}; }
+inline void unknownVariable(int p) { throw PositionalError{"UnknownVariableError", "variable is not visible", p}; }
+inline void variableRedeclaration(int p) { throw PositionalError{"VariableRedeclarationError", "variable is declared already", p}; }
+inline void interruption(int p) { throw PositionalError{"InterruptionError", "interpretation unexpectedly finished", p}; }
+inline void zeroDivizion(int p) { throw PositionalError{"ZeroDivisionError", "can't divide by zero", p}; }
+} // namespace throwError
 } // namespace exception
 } // namespace peach
