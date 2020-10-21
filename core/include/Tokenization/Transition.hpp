@@ -130,5 +130,15 @@ using LatinUnderscoreTransition = MergeTransitions<LatinCharTransition, Undersco
 using LatinUnderscoreDigitTransition = MergeTransitions<LatinUnderscoreTransition, DigitCharTransition>; // 'a' - 'z' | 'A' - 'Z' | '0' - '9'
 using FalseTransition = TransitionNegation<TrueTransition>;                                              // never
 
+namespace transitionShortcuts
+{
+using digit = DigitCharTransition;
+using lower = LowerLatinCharTransition;
+using upper = UpperLatinCharTransition;
+using letter = LatinCharTransition;
+using alphaNum = LatinUnderscoreDigitTransition;
+using fls = FalseTransition;
+using tru = TrueTransition;
+} // namespace transitionShortcuts
 } // namespace transition
 } // namespace peach
